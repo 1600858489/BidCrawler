@@ -1,0 +1,40 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.egg
+*.egg-info/
+dist/
+build/
+.eggs/
+*.whl
+*.env
+.env.local
+*.db
+*.sqlite3
+*.pyc  # 忽略所有 .pyc 文件
+*.xml
+
+# IDE和编辑器配置
+.vscode/
+.idea/
+*.sublime-workspace
+*.sublime-project
+
+# Jupyter Notebook
+.ipynb_checkpoints/
+
+# PyInstaller
+*.spec
+/build/
+pack/
+
+# 系统文件
+.DS_Store
+Thumbs.db
+*.log
+
+# 其他
+*.bak
+*.tmp
