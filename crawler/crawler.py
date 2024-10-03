@@ -1,37 +1,43 @@
+import re
+
 import requests
 from bs4 import BeautifulSoup
 
+from .adapted_parsing_methods.manager import *
+
 class WebCrawler:
     def __init__(self):
-        pass
+        self.crawl_strategy_manager = CrawlStrategyManager()
 
-    def fetch(self, url):
+    def fetch(self, url, level=1):
         if "ggzy.qz.gov.cn" in str(url):
-            pass
+            strategy = self.crawl_strategy_manager.get_strategy("ggzy.qz.gov.cn")
         elif "ggzyjy.jinhua.gov.cn" in str(url):
-            pass
+            strategy = self.crawl_strategy_manager.get_strategy("ggzyjy.jinhua.gov.cn")
         elif "ggzy.hzctc.hangzhou.gov.cn" in str(url):
-            pass
+            strategy = self.crawl_strategy_manager.get_strategy("ggzy.hzctc.hangzhou.gov.cn")
         elif "ggzyjy-eweb.wenzhou.gov.cn" in str(url):
-            pass
+            strategy = self.crawl_strategy_manager.get_strategy("ggzyjy-eweb.wenzhou.gov.cn")
         elif "jxszwsjb.jiaxing.gov.cn" in str(url):
-            pass
+            strategy = self.crawl_strategy_manager.get_strategy("jxszwsjb.jiaxing.gov.cn")
         elif "ggzyjy.huzhou.gov.cn" in str(url):
-            pass
+            strategy = self.crawl_strategy_manager.get_strategy("ggzyjy.huzhou.gov.cn")
         else:
             return False, None
         # 模拟获取页面内容
-        response = requests.get(url)
-        # 模拟获取页面内容
-        return "<html><body><a href='http://example.com/file1'>File 1</a><a href='http://example.com/file2'>File 2</a></body></html>"
+        res = strategy(url, level)
+        if res is None:
+            return False, None
+        return True, res
 
     def extract_links(self, html):
-        # 模拟提取所有链接
-        return [
-            "http://example.com/file1", "http://example.com/file2", "http://example.com/file3",
-            "http://example.com/file4", "http://example.com/file5", "http://example.com/file6", "http://example.com/file7",
-            "http://example.com/file8", "http://example.com/file9", "http://example.com/file10"
-        ]
+        res = []
+        target_div = html.select_one('#tab1 > div:nth-child(1) > ul')
+
+        for tag in target_div.select('li'):
+            link = tag.get('href')
+            res.append(link)
+        return res
 
 
 

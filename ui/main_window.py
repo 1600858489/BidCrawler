@@ -24,6 +24,7 @@ class CrawlerThread(QThread):
         self.queue = queue
         self.crawler = crawler
         self.strategy_manager = strategy_manager
+        # 初始化爬取策略管理器
 
     def run(self):
         while self.queue:
@@ -34,14 +35,14 @@ class CrawlerThread(QThread):
             time.sleep(delay)
 
             # 进行爬取
-            success, html = self.crawler.crawl(link)
+            success, html = self.crawler.fetch(link, level=2)
             if success:
                 # 获取域名并找到对应的爬取策略
                 domain = urlparse(link).netloc
                 strategy = self.strategy_manager.get_strategy(domain)
 
                 if strategy:
-                    parsed_data = strategy(html)
+                    parsed_data = strategy(link)
                     self.update_completed.emit(f"成功解析: {link} -> {parsed_data}")
                 else:
                     self.update_completed.emit(f"成功: {link}，但没有找到对应的爬取策略。")
@@ -60,10 +61,7 @@ class WebCrawlerApp(QWidget):
         self.history_manager = HistoryManager()
         self.queue = []  # 待爬取队列
         self.crawler_thread = None
-
-        # 初始化爬取策略管理器
         self.strategy_manager = CrawlStrategyManager()
-        self.register_strategies()
 
     def initUI(self):
         # 主布局
@@ -124,12 +122,6 @@ class WebCrawlerApp(QWidget):
 
         self.setLayout(layout)
 
-    def register_strategies(self):
-        """注册爬取策略"""
-        self.strategy_manager.register_strategy("ggzy.qz.gov.cn", fetch_ggzy_qz)
-        self.strategy_manager.register_strategy("ggzyjy.jinhua.gov.cn", fetch_ggzyjy_jinhua)
-        # 注册其他策略...
-
     def start_crawling(self):
         url = self.url_input.text().strip()
         domain = self.website_combo.currentText()
@@ -144,39 +136,37 @@ class WebCrawlerApp(QWidget):
             self.log_display.setText("该 URL 已经爬取过，跳过爬取。")
             return
 
-        try:
-            # 获取页面内容
-            html = self.crawler.fetch(url)
-            # 提取所有链接
-            links = self.crawler.extract_links(html)
-            # 筛选文件链接并添加到待爬取队列
-            file_links = links
-            self.queue.extend(file_links)
+        # 获取页面内容
+        status, html = self.crawler.fetch(url, level=1)
+        if not html:
+            self.log_display.setText("获取页面内容失败。")
+            return
+        # 提取所有链接
+        links = [url[:-1] + i for i in self.crawler.extract_links(html)]
+        file_links = links
+        self.queue.extend(file_links)
 
-            if not file_links:
-                self.log_display.setText("未找到任何文件链接。")
-            else:
-                self.log_display.setText("已找到文件链接，开始逐个爬取。")
+        if not file_links:
+            self.log_display.setText("未找到任何文件链接。")
+        else:
+            self.log_display.setText("已找到文件链接，开始逐个爬取。")
 
-                # 更新待爬取队列显示
-                self.queue_list.clear()
-                self.queue_list.addItem("待爬取队列：")
-                for link in self.queue:
-                    self.queue_list.addItem(link)
+            # 更新待爬取队列显示
+            self.queue_list.clear()
+            self.queue_list.addItem("待爬取队列：")
+            for link in self.queue:
+                self.queue_list.addItem(link)
 
-                # 创建并启动爬虫线程
-                self.crawler_thread = CrawlerThread(self.queue, self.crawler, self.strategy_manager)
-                self.crawler_thread.update_log.connect(self.update_log_display)
-                self.crawler_thread.update_completed.connect(self.update_completed_list)
-                self.crawler_thread.update_failed.connect(self.update_failed_list)
-                self.crawler_thread.update_queue.connect(self.update_queue_list)
-                self.crawler_thread.start()
+            # 创建并启动爬虫线程
+            self.crawler_thread = CrawlerThread(self.queue, self.crawler, self.strategy_manager)
+            self.crawler_thread.update_log.connect(self.update_log_display)
+            self.crawler_thread.update_completed.connect(self.update_completed_list)
+            self.crawler_thread.update_failed.connect(self.update_failed_list)
+            self.crawler_thread.update_queue.connect(self.update_queue_list)
+            self.crawler_thread.start()
 
-            # 添加到历史记录
-            self.history_manager.add_to_history(url)
-
-        except Exception as e:
-            self.log_display.setText(str(e))
+        # 添加到历史记录
+        self.history_manager.add_to_history(url)
 
     def update_log_display(self, message):
         self.log_display.append(message)
