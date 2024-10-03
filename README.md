@@ -72,8 +72,7 @@ pyinstaller --onefile --windowed main.py
 
 如果希望打包到特定位置，可以使用 `--distpath` 参数指定。
 ```sh
-pyinstaller --onefile --windowed --distpath "path/to/your/target/directory" main.py
-
+pyinstaller --onefile --windowed --distpath "./pack" --workpath "./pack/build" --specpath "./pack" main.py
 ```
 
 
