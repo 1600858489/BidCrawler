@@ -1,3 +1,5 @@
+from urllib.parse import urlparse
+
 import requests
 from bs4 import BeautifulSoup
 
@@ -22,7 +24,11 @@ class QzParser(AbstractWebCrawler):
             if script_tag:
                 xml_content = script_tag.string
                 # 将内容解析为 BeautifulSoup 对象
-                xml_soup = BeautifulSoup(xml_content, 'xml')
+                try:
+                    xml_soup = BeautifulSoup(xml_content, 'xml')
+                except Exception as e:
+                    print(f"解析 XML 内容失败：{e}")
+                    return None
 
                 # 提取 <record> 数据
                 records = xml_soup.find_all('record')
@@ -36,17 +42,28 @@ class QzParser(AbstractWebCrawler):
                     # 提取每个记录的链接和标题
                     link = record_soup.find('a')['href']
                     title = record_soup.find('a').text
-                    date = record_soup.find('span', class_='ewb-col-date').text
+                    date = record_soup.find('span').text
 
                     # 将数据存入列表
-                    data_list.append({
-                        'link': link,
-                        'title': title,
-                        'date': date
-                    })
-
+                    try:
+                        data_list.append({
+                            'link': link,
+                            'title': title,
+                            'date': date
+                        })
+                    except Exception as e:
+                        print(f"解析记录数据失败：{e}")
+                        continue
+                res = []
                 # 打印提取的数据
                 for data in data_list:
-                    print(data)
+                    domain = urlparse(self.url).netloc
+                    scheme = urlparse(self.url).scheme
+                    res.append(scheme + "://" + domain + data["link"])
+                self.data["new_urls"] = res
+
+
+
             else:
                 print("没有找到包含数据的 <script> 标签。")
+

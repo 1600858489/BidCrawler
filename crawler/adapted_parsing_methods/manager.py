@@ -37,12 +37,16 @@ def fetch_ggzy_qz(url, level):
         }
 
     )
+    urls = None
     if level == 1:
         parser.fetch()
+        return parser.html_content
     else:
         parser.run()
-    res = parser.html_content
-    return res
+        if parser.data.get("data", None):
+            return parser.data.get("data", None)
+        else:
+            return parser.html_content
 
 
 def fetch_ggzyjy_jinhua(url):

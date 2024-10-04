@@ -18,6 +18,7 @@ class CrawlerThread(QThread):
     update_completed = pyqtSignal(str)
     update_failed = pyqtSignal(str)
     update_queue = pyqtSignal(list)
+    new_queue = pyqtSignal(list)
 
     def __init__(self, queue, crawler, strategy_manager):
         super().__init__()
@@ -36,13 +37,18 @@ class CrawlerThread(QThread):
 
             # 进行爬取
             success, html = self.crawler.fetch(link, level=2)
+            print(f"success: {success}, html: {html}")
             if success:
                 # 获取域名并找到对应的爬取策略
                 domain = urlparse(link).netloc
                 strategy = self.strategy_manager.get_strategy(domain)
 
                 if strategy:
-                    parsed_data = strategy(link)
+                    parsed_data = strategy(link,level=2)
+                    print(parsed_data)
+                    # for new_link in parsed_data:
+                    #     print(new_link)
+                    self.new_queue.emit(parsed_data)
                     self.update_completed.emit(f"成功解析: {link} -> {parsed_data}")
                 else:
                     self.update_completed.emit(f"成功: {link}，但没有找到对应的爬取策略。")
@@ -163,21 +169,42 @@ class WebCrawlerApp(QWidget):
             self.crawler_thread.update_completed.connect(self.update_completed_list)
             self.crawler_thread.update_failed.connect(self.update_failed_list)
             self.crawler_thread.update_queue.connect(self.update_queue_list)
+            self.crawler_thread.new_queue.connect(self.add_queue_list)
             self.crawler_thread.start()
 
         # 添加到历史记录
         self.history_manager.add_to_history(url)
 
     def update_log_display(self, message):
+        """
+        更新日志显示
+        :param message:
+        :return:
+        """
         self.log_display.append(message)
 
     def update_completed_list(self, message):
+        """
+        更新已经爬取任务列表
+        :param message:
+        :return:
+        """
         self.completed_list.addItem(message)
 
     def update_failed_list(self, message):
+        """
+        更新失败任务列表
+        :param message:
+        :return:
+        """
         self.failed_list.addItem(message)
 
     def update_queue_list(self, queue):
+        """
+        更新待爬取队列列表
+        :param queue:
+        :return:
+        """
         self.queue_list.clear()
         self.queue_list.addItem("待爬取队列：")
         for link in queue:
@@ -187,6 +214,15 @@ class WebCrawlerApp(QWidget):
         # 打开当前脚本所在的文件夹
         current_folder = os.path.dirname(os.path.abspath(__file__))
         os.startfile(current_folder)  # 在 Windows 上使用 os.startfile() 打开文件夹
+
+    def add_queue_list(self,new_queue_list):
+        for link in new_queue_list:
+            if link not in self.queue:
+                self.queue.append(link)
+                self.queue_list.addItem(link)
+            elif link in self.queue_list:
+                pass
+
 
 
 if __name__ == '__main__':

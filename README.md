@@ -43,7 +43,7 @@ web_crawler/
 在运行此项目之前，您需要安装以下依赖项。可以使用 `pip` 进行安装：
 
 ```sh
-pip install PyQt5 requests beautifulsoup4
+pip install -r requirements.txt
 ```
 
 ## 运行程序
