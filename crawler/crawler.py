@@ -1,8 +1,3 @@
-import re
-
-import requests
-from bs4 import BeautifulSoup
-
 from .adapted_parsing_methods.manager import *
 
 class WebCrawler:
@@ -30,20 +25,4 @@ class WebCrawler:
             return False, None
         return True, res
 
-    def extract_links(self, html):
-        res = []
-        target_div = html.select_one('#tab1 > div:nth-child(1) > ul')
 
-        for tag in target_div.select('li'):
-            link = tag.get('href')
-            res.append(link)
-        return res
-
-
-
-    def crawl(self, url):
-        # 模拟爬取返回 (成功状态, 路径)
-        if "file1" in url:
-            return True, "/path/to/file1"
-        else:
-            return False, None

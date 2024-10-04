@@ -2,6 +2,7 @@ from abc import ABC, abstractmethod
 
 import requests
 
+from config import *
 
 
 class CrawlStrategyManager:
@@ -26,7 +27,8 @@ class CrawlStrategyManager:
 
 
 # 示例爬取策略
-def fetch_ggzy_qz(url, level):
+def fetch_ggzy_qz(url, link_type):
+    print(url, link_type)
     # 针对 ggzy.qz.gov.cn 的爬取策略
     from crawler.adapted_parsing_methods.qz import QzParser
     parser = QzParser(
@@ -37,16 +39,38 @@ def fetch_ggzy_qz(url, level):
         }
 
     )
-    urls = None
-    if level == 1:
-        parser.fetch()
-        return parser.html_content
-    else:
+
+    if link_type == "html":
+        parser.url_type = "html"
         parser.run()
-        if parser.data.get("data", None):
-            return parser.data.get("data", None)
+        if parser.response_type == "url_list":
+            return "url_list", parser.response
+        elif parser.response_type == "html":
+            return "html", parser.html_content
+    elif link_type == "table":
+        parser.url_type = "table"
+        print("  Fetching table data...")
+
+        parser.run()
+        if parser.response_type == "url_list":
+            return "url_list", parser.response
+        elif parser.response_type == "html":
+            return "html", parser.html_content
+        elif parser.response_type == "json":
+            return "json", parser.response
+    elif link_type == "detail_page":
+        parser.url_type = "detail_page"
+        parser.run()
+        if parser.response_type == "url_list":
+            return "url_list", parser.response
+        elif parser.response_type == "html":
+            return "html", parser.html_content
+        elif parser.response_type == "json":
+            return "json", parser.response
         else:
-            return parser.html_content
+            return "text", parser.response
+
+
 
 
 def fetch_ggzyjy_jinhua(url):
@@ -86,6 +110,7 @@ class AbstractWebCrawler(ABC):
         :param method: HTTP 方法，默认为 "GET"
         """
         self.url = url
+        self.url_type = ""
         self.headers = headers or {}
         self.params = params or {}
         self.proxies = proxies or {}
@@ -93,6 +118,21 @@ class AbstractWebCrawler(ABC):
         self.method = method.upper()
         self.html_content = None
         self.session = requests.Session()
+        # 响应类型
+        """
+        text: 纯文本数据
+        table: 表格数据
+        detail_page: 详情页数据
+        url_list: 网页中包含的 URL 列表
+        json: JSON 数据
+        binary: 二进制数据
+        file: 文件下载
+        control: 控制信息
+        """
+        self.response_type = ""
+        self.response = None
+        self.file_path = FILE_PATH
+
 
     @abstractmethod
     def fetch(self):
