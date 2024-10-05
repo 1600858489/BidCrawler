@@ -3,9 +3,9 @@ import sys
 import time
 from urllib.parse import urlparse
 
-from PyQt5.QtCore import QThread, pyqtSignal
+from PyQt5.QtCore import QThread, pyqtSignal, QTimer
 from PyQt5.QtWidgets import QApplication, QWidget, QHBoxLayout, QLineEdit, QPushButton, QTextEdit, \
-    QListWidget, QGridLayout, QComboBox, QTableWidget, QTableWidgetItem
+    QListWidget, QGridLayout, QComboBox, QTableWidget, QTableWidgetItem, QMessageBox
 
 from core.history_manager import HistoryManager  # 历史管理模块
 from crawler.adapted_parsing_methods.manager import *  # 爬取策略管理器
@@ -19,6 +19,7 @@ class CrawlerThread(QThread):
     update_queue = pyqtSignal(list)
     new_queue = pyqtSignal(list)
 
+
     def __init__(self, queue, crawler, strategy_manager):
         super().__init__()
         self.queue = queue
@@ -26,8 +27,14 @@ class CrawlerThread(QThread):
         self.strategy_manager = strategy_manager
         # 初始化爬取策略管理器
 
+        self.paused = False
+        self.stopped = False
+
     def run(self):
-        while self.queue:
+        while self.queue and not self.stopped:
+            if self.paused:
+                time.sleep(1)
+                continue
             address = self.queue.pop(0)
             self.update_log.emit(f"开始爬取 {address}...")
             print(f"正在爬取 {address}...")
@@ -72,6 +79,14 @@ class CrawlerThread(QThread):
 
             # 更新待爬取队列
 
+    def pause(self):
+        self.paused = True
+
+    def resume(self):
+        self.paused = False
+
+    def stop(self):
+        self.stopped = True
 
 
 class WebCrawlerApp(QWidget):
@@ -119,6 +134,22 @@ class WebCrawlerApp(QWidget):
         self.open_folder_button.clicked.connect(self.open_current_folder)
         url_layout.addWidget(self.open_folder_button)
 
+        # 停止按钮
+        self.stop_button = QPushButton('停止')
+        self.stop_button.clicked.connect(self.stop_crawling)
+        url_layout.addWidget(self.stop_button)
+
+        # 暂停按钮
+        self.pause_button = QPushButton('暂停')
+        self.pause_button.clicked.connect(self.pause_crawling)
+        url_layout.addWidget(self.pause_button)
+
+        # 定时器，用于定时询问是否继续运行
+        self.pause_timer = QTimer()
+        # self.pause_timer.setInterval(3600 * 1000)  # 设置1小时（3600秒）
+        self.pause_timer.setInterval(1 * 1000)  # 设置10秒
+        self.pause_timer.timeout.connect(self.ask_resume_or_stop)
+
         # 创建四个区域的控件
         self.log_display = QTextEdit()
         self.log_display.setReadOnly(True)
@@ -158,10 +189,6 @@ class WebCrawlerApp(QWidget):
             return
         elif not url and domain:
             url = f"http://{domain}/"
-        # 检查历史记录中是否已有该 URL
-        if self.history_manager.is_in_history(url):
-            self.log_display.setText("该 URL 已经爬取过，跳过爬取。")
-            return
 
         # 获取页面内容
         status, html = self.crawler.fetch(url, "html")
@@ -243,7 +270,56 @@ class WebCrawlerApp(QWidget):
             elif link in self.queue_list:
                 pass
 
+    def stop_crawling(self):
+        if self.crawler_thread and self.crawler_thread.isRunning():
+            self.crawler_thread.stop()
+            self.crawler_thread.wait()  # 等待线程安全结束
+            self.log_display.append("爬虫线程已停止。")
 
+    def pause_crawling(self):
+        if self.crawler_thread and self.crawler_thread.isRunning():
+            if self.crawler_thread.paused:
+                self.crawler_thread.resume()
+                self.log_display.append("爬虫线程已恢复运行。")
+                self.pause_button.setText('暂停')
+            else:
+                self.crawler_thread.terminate()
+                self.pause_timer.start()
+                self.log_display.append("爬虫线程已暂停。")
+                self.crawler_thread.pause()
+                self.pause_button.setText('继续')
+
+    def ask_resume_or_stop(self):
+        # 停止计时器，防止重复触发
+        self.pause_timer.stop()
+
+        # 创建带有多个选项的对话框
+        msg_box = QMessageBox(self)
+        msg_box.setWindowTitle("暂停超时提醒")
+        msg_box.setText("暂停时间已超过1小时，请选择操作：")
+        pause_button = msg_box.addButton("继续暂停", QMessageBox.ActionRole)
+        resume_button = msg_box.addButton("继续爬取", QMessageBox.ActionRole)
+        ignore_button = msg_box.addButton("忽略提醒", QMessageBox.ActionRole)
+        stop_button = msg_box.addButton("关闭爬虫", QMessageBox.ActionRole)
+
+        # 显示对话框并等待用户选择
+        msg_box.exec_()
+
+        if msg_box.clickedButton() == pause_button:
+            # 继续暂停，重新启动计时器
+            self.pause_timer.start()
+            self.log_display.append("继续暂停")
+        elif msg_box.clickedButton() == resume_button:
+            # 继续爬取
+            self.start_crawling()
+            self.log_display.append("继续爬取")
+        elif msg_box.clickedButton() == ignore_button:
+            # 忽略提醒，什么也不做
+            self.log_display.append("忽略提醒")
+        elif msg_box.clickedButton() == stop_button:
+            # 关闭爬虫
+            self.stop_crawling()
+            self.log_display.append("爬虫已停止")
 
 if __name__ == '__main__':
     app = QApplication(sys.argv)

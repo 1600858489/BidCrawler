@@ -1,32 +1,45 @@
+import datetime
 import os
-from urllib.parse import urlparse
+from urllib.parse import urlparse, parse_qs
 
 from bs4 import BeautifulSoup
 
+from core.history_manager import HistoryManager
 from .manager import AbstractWebCrawler
 
+history_manager = HistoryManager()
 
 class QzParser(AbstractWebCrawler):
     def fetch(self):
-        headers = self.headers
+        print(self.url_type, history_manager.is_in_history(self.url))
+        input()
+        if self.url_type == "detail_page" and not history_manager.is_in_history(self.url):
+            headers = self.headers
 
-        response = self.session.get(self.url, headers=headers)
-        soup = BeautifulSoup(response.content, 'html.parser')
-        self.html_content = soup
+            response = self.session.get(self.url, headers=headers)
+            soup = BeautifulSoup(response.content, 'html.parser')
+            self.html_content = soup
+        else:
+            headers = self.headers
+
+            response = self.session.get(self.url, headers=headers)
+            soup = BeautifulSoup(response.content, 'html.parser')
+            self.html_content = soup
+
 
     def parse(self):
         print(self.response_type)
         if self.html_content is None:
             return None
         elif self.html_content is not None:
+            domain = urlparse(self.url).netloc
+            scheme = urlparse(self.url).scheme
             if self.url_type == "html":
                 target_div = self.html_content.select_one("#tab1 > div:nth-child(1) > ul")
                 res = []
 
                 for tag in target_div.select('li'):
                     link = tag.get('href')
-                    domain = urlparse(self.url).netloc
-                    scheme = urlparse(self.url).scheme
                     res.append((1, scheme + "://" + domain + link, "table"))
 
                 self.response_type = "url_list"
@@ -34,6 +47,7 @@ class QzParser(AbstractWebCrawler):
 
 
             elif self.url_type == "table":
+
                 # TODO: 解析 HTML 内容并提取数据，返回字典列表，进入第三层爬虫
                 script_tag = self.html_content.find('script', type='text/xml')
                 if script_tag:
@@ -59,17 +73,24 @@ class QzParser(AbstractWebCrawler):
 
                         # 将数据存入列表
                         try:
-                            domain = urlparse(self.url).netloc
-                            scheme = urlparse(self.url).scheme
                             data_list.append((1, scheme + "://" + domain + link, "detail_page"))
 
                         except Exception as e:
                             print(f"解析记录数据失败：{e}")
                             continue
-                    next_page_tag = self.html_content.find('a', title='下页')
-                    if next_page_tag:
-                        next_page_url = next_page_tag['href']
-                        data_list.append((1, next_page_url, "control"))
+
+                    now_page_num = parse_qs(urlparse(self.url).query).get('pageNum', [False])[0]
+
+                    if now_page_num == False:
+                        if self.max_page >= 2:
+                            next_page_num = 2
+                            next_url = self.url + "&uid=7872499&pageNum=" + str(next_page_num)
+                            data_list.append((1, next_url, "table"))
+                    else:
+                        if int(now_page_num) < self.max_page:
+                            next_page_num = int(now_page_num) + 1
+                            next_url = self.url.replace("pageNum=" + str(now_page_num), "pageNum=" + str(next_page_num))
+                            data_list.append((1, next_url, "table"))
 
                     if data_list:
                         self.response_type = "url_list"
@@ -81,8 +102,9 @@ class QzParser(AbstractWebCrawler):
 
                                                                                                             "")
                 file_info = self.html_content.select('#fileDownd a')
+                is_file = True if file_info else False
                 res = []
-                one_file_path = self.file_path + "/" + title
+                one_file_path = self.file_path + "/" + domain + "/" + title
                 if not os.path.exists(one_file_path):
                     os.makedirs(one_file_path)
 
@@ -98,6 +120,13 @@ class QzParser(AbstractWebCrawler):
                     f.write(content)
                 self.response_type = "text"
                 self.response = one_file_path
+                history_manager.add_to_history(
+                    self.url,
+                    is_file,
+                    one_file_path,
+                    datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+                    "test",
+                )
 
     def file_download(self, file_url, file_path):
         headers = self.headers
