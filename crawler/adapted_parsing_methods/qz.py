@@ -6,29 +6,43 @@ from bs4 import BeautifulSoup
 
 from core.history_manager import HistoryManager
 from .manager import AbstractWebCrawler
+from log.logger import Logger
+
+log = Logger().get_logger()
 
 history_manager = HistoryManager()
 
 class QzParser(AbstractWebCrawler):
     def fetch(self):
-        print(self.url_type, history_manager.is_in_history(self.url))
-        input()
-        if self.url_type == "detail_page" and not history_manager.is_in_history(self.url):
-            headers = self.headers
+        log.info(f"Fetching {self.url}")
+        headers = self.headers
 
+        try:
             response = self.session.get(self.url, headers=headers)
-            soup = BeautifulSoup(response.content, 'html.parser')
-            self.html_content = soup
-        else:
-            headers = self.headers
+            if response.status_code == 200:
+                log.info(f"Fetch successful for {self.url}")
+                log.info(f"response content: {response.status_code}")
+                self.html_content = BeautifulSoup(response.content, 'html.parser')
+            else:
+                log.error(f"Fetch failed for {self.url}")
+                log.error(f"response status code: {response.status_code}")
+                log.error(f"response content: {response.content}")
+                self.html_content = None
+        except Exception as e:
+            log.error(f"Fetch failed for {self.url}")
+            log.error(f"Error: {e}")
 
-            response = self.session.get(self.url, headers=headers)
-            soup = BeautifulSoup(response.content, 'html.parser')
-            self.html_content = soup
+        try:
+            log.info(f"self.session history: {self.session.history[-1].url}")
+        except:
+            pass
+
+
+
 
 
     def parse(self):
-        print(self.response_type)
+
         if self.html_content is None:
             return None
         elif self.html_content is not None:
@@ -73,19 +87,25 @@ class QzParser(AbstractWebCrawler):
 
                         # 将数据存入列表
                         try:
-                            data_list.append((1, scheme + "://" + domain + link, "detail_page"))
+                            link = scheme + "://" + domain + link
+                            if not history_manager.is_in_history(link):
+                                data_list.append((1, link, "detail_page"))
+                            else:
+                                log.info(f"link is in history, skip {link}")
 
                         except Exception as e:
-                            print(f"解析记录数据失败：{e}")
+                            log.error(f"analysis record data failed: {e}")
                             continue
 
                     now_page_num = parse_qs(urlparse(self.url).query).get('pageNum', [False])[0]
 
-                    if now_page_num == False:
+                    if not now_page_num:
                         if self.max_page >= 2:
                             next_page_num = 2
                             next_url = self.url + "&uid=7872499&pageNum=" + str(next_page_num)
                             data_list.append((1, next_url, "table"))
+                        else:
+                            log.info(f"crawled all pages, stop")
                     else:
                         if int(now_page_num) < self.max_page:
                             next_page_num = int(now_page_num) + 1
@@ -113,6 +133,7 @@ class QzParser(AbstractWebCrawler):
                     file_url = file['href']
                     file_name = file.text.strip()
                     file_path = one_file_path + "/" + file_name
+                    log.info(f"downloading file: {file_name}")
                     if self.file_download(file_url, file_path):
                         continue
 
@@ -120,17 +141,24 @@ class QzParser(AbstractWebCrawler):
                     f.write(content)
                 self.response_type = "text"
                 self.response = one_file_path
+
                 history_manager.add_to_history(
-                    self.url,
-                    is_file,
-                    one_file_path,
-                    datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-                    "test",
+                    url=self.url,
+                    has_attachment=is_file,
+                    attachment_path=one_file_path,
+                    platform="衢州市政府",
+                    timestamp=str(datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")),
+                    description="test"
                 )
 
     def file_download(self, file_url, file_path):
+        log.info(f"downloading file: {file_url}")
         headers = self.headers
         response = self.session.get(file_url, headers=headers, stream=True)
+        if response.status_code != 200:
+            log.error(f"download file failed: {file_url}")
+            return False
+        log.info(f"download file successful: {file_url}")
         with open(file_path, 'wb') as f:
             for chunk in response.iter_content(chunk_size=1024):
                 if chunk:

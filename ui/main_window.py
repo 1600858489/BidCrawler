@@ -10,6 +10,9 @@ from PyQt5.QtWidgets import QApplication, QWidget, QHBoxLayout, QLineEdit, QPush
 from core.history_manager import HistoryManager  # 历史管理模块
 from crawler.adapted_parsing_methods.manager import *  # 爬取策略管理器
 from crawler.crawler import WebCrawler  # 爬虫模块
+from log.logger import Logger
+
+log = Logger().get_logger()
 
 
 class CrawlerThread(QThread):
@@ -37,10 +40,8 @@ class CrawlerThread(QThread):
                 continue
             address = self.queue.pop(0)
             self.update_log.emit(f"开始爬取 {address}...")
-            print(f"正在爬取 {address}...")
             link = address[1]
             link_type = address[2]
-            print(f"link_type: {link_type}, link: {link}")
 
 
             # 模拟网络延迟 1 到 5 秒
@@ -59,23 +60,30 @@ class CrawlerThread(QThread):
                 parsed_type, parsed_data = strategy(link, link_type)
                 if not parsed_data:
                     self.update_completed.emit(f"成功: {link}，但没有找到有效数据。")
+                    log.info(f"session {link} has no valid data")
                     continue
                 elif parsed_type == "url_list":
                     if not parsed_data:
                         self.update_completed.emit(f"成功: {link}，但没有找到有效链接。")
+                        log.info(f"session {link} has no valid data")
                         continue
                     self.new_queue.emit(parsed_data)
                     self.update_completed.emit(f"成功解析: {link} ，发现 {len(parsed_data)} 个链接。")
+                    log.info(f"session {link} has {len(parsed_data)} valid links")
                     time.sleep(1)
                     self.update_queue.emit(self.queue)
                 elif parsed_type == "file_list":
                     self.update_completed.emit(f"成功解析: {link} ，发现 {len(parsed_data)} 个文件。")
+                    log.info(f"session {link} has no valid data")
                 elif parsed_type == "text":
                     self.update_completed.emit(f"成功: {link}， 数据存储于 {parsed_data}。")
+                    log.info(f"session {link} has no valid data")
                 else:
                     self.update_completed.emit(f"成功: {link}，但没有找到对应的爬取策略。")
+                    log.info(f"session {link} has no valid data")
             else:
                 self.update_failed.emit(f"失败: {link}")
+                log.info(f"session {link} has no valid data")
 
             # 更新待爬取队列
 
@@ -216,9 +224,6 @@ class WebCrawlerApp(QWidget):
         self.crawler_thread.new_queue.connect(self.add_queue_list)
         self.crawler_thread.start()
 
-        # 添加到历史记录
-        self.history_manager.add_to_history(url)
-
     def update_log_display(self, message):
         """
         更新日志显示
@@ -259,7 +264,7 @@ class WebCrawlerApp(QWidget):
 
     def open_current_folder(self):
         # 打开当前脚本所在的文件夹
-        current_folder = os.path.dirname(os.path.abspath(__file__))
+        current_folder = os.path.dirname(os.getcwd())
         os.startfile(current_folder)  # 在 Windows 上使用 os.startfile() 打开文件夹
 
     def add_queue_list(self,new_queue_list):

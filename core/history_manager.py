@@ -41,6 +41,7 @@ class HistoryManager:
         return self.history_df
 
 
+
 # 使用示例
 if __name__ == '__main__':
     history_manager = HistoryManager()
