@@ -3,7 +3,9 @@ from abc import ABC, abstractmethod
 import requests
 
 from config import *
+from log.logger import Logger
 
+log = Logger().get_logger()
 
 class CrawlStrategyManager:
     def __init__(self):
@@ -22,13 +24,12 @@ class CrawlStrategyManager:
 
     def get_strategy(self, domain):
         """获取指定域名的爬取策略"""
-        print(f"  Getting strategy for domain: {domain}")
+        log.info(f"Getting strategy for domain: {domain}")
         return self.strategies.get(domain, None)
 
 
 # 示例爬取策略
 def fetch_ggzy_qz(url, link_type):
-    print(url, link_type)
     # 针对 ggzy.qz.gov.cn 的爬取策略
     from crawler.adapted_parsing_methods.qz import QzParser
     parser = QzParser(
@@ -49,7 +50,47 @@ def fetch_ggzy_qz(url, link_type):
             return "html", parser.html_content
     elif link_type == "table":
         parser.url_type = "table"
-        print("  Fetching table data...")
+        parser.run()
+        if parser.response_type == "url_list":
+            return "url_list", parser.response
+        elif parser.response_type == "html":
+            return "html", parser.html_content
+        elif parser.response_type == "json":
+            return "json", parser.response
+    elif link_type == "detail_page":
+        parser.url_type = "detail_page"
+        parser.run()
+        if parser.response_type == "url_list":
+            return "url_list", parser.response
+        elif parser.response_type == "html":
+            return "html", parser.html_content
+        elif parser.response_type == "json":
+            return "json", parser.response
+        else:
+            return "text", parser.response
+
+
+def fetch_ggzyjy_jinhua(url, link_type):
+    # 针对 ggzyjy.jinhua.gov.cn 的爬取策略
+
+    from crawler.adapted_parsing_methods.jinhua import JinhuaParser
+    parser = JinhuaParser(
+        url=url,
+        headers={
+            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.110 Safari/537.36",
+
+        }
+
+    )
+    if link_type == "html":
+        parser.url_type = "html"
+        parser.run()
+        if parser.response_type == "url_list":
+            return "url_list", parser.response
+        elif parser.response_type == "html":
+            return "html", parser.html_content
+    elif link_type == "table":
+        parser.url_type = "table"
 
         parser.run()
         if parser.response_type == "url_list":
@@ -71,10 +112,7 @@ def fetch_ggzy_qz(url, link_type):
             return "text", parser.response
 
 
-
-
-def fetch_ggzyjy_jinhua(url):
-    # 针对 ggzyjy.jinhua.gov.cn 的爬取策略
+def fetch_ggzy_qz_test(url):
     return f"Fetched data from ggzyjy.jinhua.gov.cn: {url[:100]}"
 
 

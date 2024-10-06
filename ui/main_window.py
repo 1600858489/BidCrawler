@@ -57,7 +57,10 @@ class CrawlerThread(QThread):
             strategy = self.strategy_manager.get_strategy(domain)
 
             if strategy:
-                parsed_type, parsed_data = strategy(link, link_type)
+                resulta = strategy(link, link_type)
+                if resulta is None:
+                    break
+                parsed_type, parsed_data = resulta
                 if not parsed_data:
                     self.update_completed.emit(f"成功: {link}，但没有找到有效数据。")
                     log.info(f"session {link} has no valid data")
@@ -155,7 +158,7 @@ class WebCrawlerApp(QWidget):
         # 定时器，用于定时询问是否继续运行
         self.pause_timer = QTimer()
         # self.pause_timer.setInterval(3600 * 1000)  # 设置1小时（3600秒）
-        self.pause_timer.setInterval(1 * 1000)  # 设置10秒
+        self.pause_timer.setInterval(3600 * 1000)  # 设置10秒
         self.pause_timer.timeout.connect(self.ask_resume_or_stop)
 
         # 创建四个区域的控件
@@ -255,7 +258,12 @@ class WebCrawlerApp(QWidget):
         :param queue:
         :return:
         """
-        # self.queue_list.clear()
+        header = [self.queue_list.horizontalHeaderItem(i).text() for i in range(self.queue_list.columnCount())]
+        self.queue_list.clear()
+        self.queue_list.setHorizontalHeaderLabels(header)
+        row_count = self.queue_list.rowCount()
+        for row in range(row_count - 1, 0, -1):
+            self.queue_list.removeRow(row)
         for link in queue:
             new_row_index = self.queue_list.rowCount() - 1
             self.queue_list.insertRow(new_row_index)
@@ -279,6 +287,13 @@ class WebCrawlerApp(QWidget):
         if self.crawler_thread and self.crawler_thread.isRunning():
             self.crawler_thread.stop()
             self.crawler_thread.wait()  # 等待线程安全结束
+            self.queue = []
+            header = [self.queue_list.horizontalHeaderItem(i).text() for i in range(self.queue_list.columnCount())]
+            self.queue_list.clear()
+            self.queue_list.setHorizontalHeaderLabels(header)
+            row_count = self.queue_list.rowCount()
+            for row in range(row_count - 1, 0, -1):
+                self.queue_list.removeRow(row)
             self.log_display.append("爬虫线程已停止。")
 
     def pause_crawling(self):

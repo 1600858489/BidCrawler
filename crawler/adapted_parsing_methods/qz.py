@@ -5,8 +5,8 @@ from urllib.parse import urlparse, parse_qs
 from bs4 import BeautifulSoup
 
 from core.history_manager import HistoryManager
-from .manager import AbstractWebCrawler
 from log.logger import Logger
+from .manager import AbstractWebCrawler
 
 log = Logger().get_logger()
 
@@ -57,12 +57,10 @@ class QzParser(AbstractWebCrawler):
                     res.append((1, scheme + "://" + domain + link, "table"))
 
                 self.response_type = "url_list"
-                self.response = [res[0]]
+                self.response = res
 
 
             elif self.url_type == "table":
-
-                # TODO: 解析 HTML 内容并提取数据，返回字典列表，进入第三层爬虫
                 script_tag = self.html_content.find('script', type='text/xml')
                 if script_tag:
                     xml_content = script_tag.string
@@ -132,6 +130,10 @@ class QzParser(AbstractWebCrawler):
                     file = file_info.pop(0)
                     file_url = file['href']
                     file_name = file.text.strip()
+                    num = 0
+                    while os.path.exists(one_file_path + "/" + file_name):
+                        file_name = file_name.split('.')[0] + f"({num})" + "." + file_name.split('.')[1]
+                        num += 1
                     file_path = one_file_path + "/" + file_name
                     log.info(f"downloading file: {file_name}")
                     if self.file_download(file_url, file_path):
