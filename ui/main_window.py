@@ -3,9 +3,9 @@ import sys
 import time
 from urllib.parse import urlparse
 
-from PyQt5.QtCore import QThread, pyqtSignal, QTimer
+from PyQt5.QtCore import QThread, pyqtSignal
 from PyQt5.QtWidgets import QApplication, QWidget, QHBoxLayout, QLineEdit, QPushButton, QTextEdit, \
-    QListWidget, QGridLayout, QComboBox, QTableWidget, QTableWidgetItem, QMessageBox
+    QListWidget, QGridLayout, QComboBox, QTableWidget, QTableWidgetItem, QMessageBox, QVBoxLayout, QSpinBox, QLabel
 
 from core.history_manager import HistoryManager  # 历史管理模块
 from crawler.adapted_parsing_methods.manager import *  # 爬取策略管理器
@@ -21,6 +21,7 @@ class CrawlerThread(QThread):
     update_failed = pyqtSignal(str)
     update_queue = pyqtSignal(list)
     new_queue = pyqtSignal(list)
+
 
 
     def __init__(self, queue, crawler, strategy_manager):
@@ -117,10 +118,13 @@ class WebCrawlerApp(QWidget):
         self.setGeometry(100, 100, 1400, 1000)
         layout = QGridLayout()
 
+        # 输入区域布局
+        input_layout = QVBoxLayout()
+
         # 输入 URL 区域
         url_layout = QHBoxLayout()
         self.url_input = QLineEdit()
-        self.url_input.setPlaceholderText('请输入要爬取的 URL...')
+        self.url_input.setPlaceholderText('请输入要查询的 URL')
         url_layout.addWidget(self.url_input)
 
         # 网站选择下拉框
@@ -135,37 +139,63 @@ class WebCrawlerApp(QWidget):
         ])
         url_layout.addWidget(self.website_combo)
 
+        input_layout.addLayout(url_layout)
+
+        # 输入关键字区域
+        keyword_layout = QHBoxLayout()
+        self.keyword_input = QLineEdit()
+        self.keyword_input.setPlaceholderText('请输入要查询的关键字')
+        keyword_layout.addWidget(self.keyword_input)
+        input_layout.addLayout(keyword_layout)
+
+        # 创建爬取目标日期的输入区域
+        date_range_layout = QHBoxLayout()
+        self.target_days_input = QSpinBox()  # 使用 QSpinBox 让用户输入天数
+        self.target_days_input.setRange(1, 9999)  # 设置可输入的范围，1到365天
+        self.target_days_input.setValue(1)  # 设置默认值为1
+        date_range_label = QLabel('需要查询')
+        date_range_layout.addWidget(date_range_label)  # 标签提示
+        date_range_layout.addWidget(self.target_days_input)  # 天数输入框
+        date_range_label = QLabel('天内的信息')
+        date_range_layout.addWidget(date_range_label)  # 标签提示
+        input_layout.addLayout(date_range_layout)
+
+        # 添加输入区域布局到主布局
+        layout.addLayout(input_layout, 0, 0, 1, 2)  # 将输入区域放在顶部
+
+        # 操作按钮区域
+        button_layout = QHBoxLayout()
+
         # 开始按钮
         self.start_button = QPushButton('开始')
         self.start_button.clicked.connect(self.start_crawling)
-        url_layout.addWidget(self.start_button)
+        button_layout.addWidget(self.start_button)
 
         # 打开当前文件夹按钮
         self.open_folder_button = QPushButton('打开当前文件夹')
         self.open_folder_button.clicked.connect(self.open_current_folder)
-        url_layout.addWidget(self.open_folder_button)
+        button_layout.addWidget(self.open_folder_button)
 
         # 停止按钮
         self.stop_button = QPushButton('停止')
         self.stop_button.clicked.connect(self.stop_crawling)
-        url_layout.addWidget(self.stop_button)
+        button_layout.addWidget(self.stop_button)
 
         # 暂停按钮
         self.pause_button = QPushButton('暂停')
         self.pause_button.clicked.connect(self.pause_crawling)
-        url_layout.addWidget(self.pause_button)
+        button_layout.addWidget(self.pause_button)
 
-        # 定时器，用于定时询问是否继续运行
-        self.pause_timer = QTimer()
-        # self.pause_timer.setInterval(3600 * 1000)  # 设置1小时（3600秒）
-        self.pause_timer.setInterval(3600 * 1000)  # 设置10秒
-        self.pause_timer.timeout.connect(self.ask_resume_or_stop)
+        # 将按钮区域添加到主布局
+        layout.addLayout(button_layout, 1, 0, 1, 2)  # 按钮区域放在输入区域下方
 
-        # 创建四个区域的控件
+        # 显示日志区域
         self.log_display = QTextEdit()
         self.log_display.setReadOnly(True)
         self.log_display.setPlaceholderText("日志区域")
+        layout.addWidget(self.log_display, 2, 0, 1, 2)  # 日志区域占据上半部分
 
+        # 创建待爬取队列及已完成、失败任务列表
         self.queue_list = QTableWidget()
         self.queue_list.setRowCount(len(self.queue) + 1)
         self.queue_list.setColumnCount(2)
@@ -173,47 +203,54 @@ class WebCrawlerApp(QWidget):
         self.queue_list.setColumnWidth(0, 500)
         self.queue_list.setEditTriggers(QTableWidget.NoEditTriggers)
 
-
         self.completed_list = QListWidget()
         self.completed_list.addItem("已经爬取任务：")  # 添加默认提示项
 
         self.failed_list = QListWidget()
         self.failed_list.addItem("失败任务：")  # 添加默认提示项
 
-        # 添加 URL 输入区域到布局的顶部
-        layout.addLayout(url_layout, 0, 0, 1, 2)
-
-        # 添加四个区域
-        layout.addWidget(self.log_display, 1, 0, 1, 2)  # 日志区域占据上半部分
-        layout.addWidget(self.queue_list, 2, 0)         # 待爬取队列占据左下
-        layout.addWidget(self.completed_list, 2, 1)     # 已经爬取任务占据右下
-        layout.addWidget(self.failed_list, 3, 0, 1, 2)  # 失败任务占据最底部
+        layout.addWidget(self.queue_list, 3, 0)  # 待爬取队列占据左下
+        layout.addWidget(self.completed_list, 3, 1)  # 已经爬取任务占据右下
+        layout.addWidget(self.failed_list, 4, 0, 1, 2)  # 失败任务占据最底部
 
         self.setLayout(layout)
 
     def start_crawling(self):
         url = self.url_input.text().strip()
         domain = self.website_combo.currentText()
+        keyword = self.keyword_input.text().strip()
+        is_ok = False
+
 
         if not url and not domain:
-            self.log_display.setText("请输入有效的 URL。")
+            self.log_display.setText("请输入有效的查询目标 。")
             return
+        elif url:
+            if "http" in url:
+                url = [url]
+            else:
+                url = ["http://" + i for i in [
+                    "ggzy.qz.gov.cn", "ggzyjy.jinhua.gov.cn"]]
+
         elif not url and domain:
-            url = f"http://{domain}/"
+            url = [f"http://{domain}/"]
 
         # 获取页面内容
-        status, html = self.crawler.fetch(url, "html")
-        if not html:
-            self.log_display.setText("获取页面内容失败。")
-            return
+        for i in url:
+            print(i)
+            status, html = self.crawler.fetch(i, "html")
+            if not html:
+                self.log_display.setText("获取页面内容失败。")
+                return
 
-        # 提取所有链接
-        links = [(1, url, "html")]
-        self.queue.extend(links)
+            # 提取所有链接
+            links = [(1, i, "html")]
+            self.queue.extend(links)
 
         # 更新待爬取队列显示
         for link in self.queue:
             new_row_index = 1
+            print(link)
             self.queue_list.insertRow(new_row_index)
             self.queue_list.setItem(new_row_index, 0, QTableWidgetItem(link[1]))
             self.queue_list.setItem(new_row_index, 1, QTableWidgetItem(link[2]))
@@ -272,8 +309,8 @@ class WebCrawlerApp(QWidget):
 
     def open_current_folder(self):
         # 打开当前脚本所在的文件夹
-        current_folder = os.path.dirname(os.getcwd())
-        os.startfile(current_folder)  # 在 Windows 上使用 os.startfile() 打开文件夹
+        from config import FILE_PATH
+        os.startfile(FILE_PATH)  # 在 Windows 上使用 os.startfile() 打开文件夹
 
     def add_queue_list(self,new_queue_list):
 

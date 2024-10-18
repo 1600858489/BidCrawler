@@ -137,7 +137,8 @@ def fetch_ggzyjy_huzhou(html_content):
 
 
 class AbstractWebCrawler(ABC):
-    def __init__(self, url, headers=None, params=None, proxies=None, data=None, method="GET", max_page=None):
+    def __init__(self, url, headers=None, params=None, proxies=None, data=None, method="GET", max_page=None,
+                 keyword=None):
         """
         初始化网页爬虫的基础属性。
         :param url: 爬取目标 URL
@@ -171,6 +172,7 @@ class AbstractWebCrawler(ABC):
         self.response = None
         self.file_path = FILE_PATH
         self.max_page = max_page or 100
+        self.keyword = keyword or ""
 
 
     @abstractmethod

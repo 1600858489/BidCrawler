@@ -90,6 +90,9 @@ class JinhuaParser(AbstractWebCrawler):
 
                         # 提取每个记录的链接和标题
                         link = record_soup.find('a')['href']
+                        title = record_soup.find('a').text.strip()
+                        if self.keyword and self.keyword not in title:
+                            continue
 
                         # 将数据存入列表
                         try:
