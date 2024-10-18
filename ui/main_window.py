@@ -8,8 +8,8 @@ from PyQt5.QtWidgets import QApplication, QWidget, QHBoxLayout, QLineEdit, QPush
     QListWidget, QGridLayout, QComboBox, QTableWidget, QTableWidgetItem, QMessageBox, QVBoxLayout, QSpinBox, QLabel
 
 from core.history_manager import HistoryManager  # 历史管理模块
-from crawler.adapted_parsing_methods.manager import *  # 爬取策略管理器
-from crawler.crawler import WebCrawler  # 爬虫模块
+from crawler.adapted_parsing_methods.manager import *  # 查询策略管理器
+from crawler.crawler import WebCrawler  # 查询工具模块
 from log.logger import Logger
 
 log = Logger().get_logger()
@@ -24,12 +24,14 @@ class CrawlerThread(QThread):
 
 
 
-    def __init__(self, queue, crawler, strategy_manager):
+    def __init__(self, queue, crawler, strategy_manager,key_words,max_day):
         super().__init__()
         self.queue = queue
         self.crawler = crawler
         self.strategy_manager = strategy_manager
-        # 初始化爬取策略管理器
+        self.key_words = key_words
+        self.max_day = max_day
+        # 初始化查询策略管理器
 
         self.paused = False
         self.stopped = False
@@ -40,7 +42,7 @@ class CrawlerThread(QThread):
                 time.sleep(1)
                 continue
             address = self.queue.pop(0)
-            self.update_log.emit(f"开始爬取 {address}...")
+            self.update_log.emit(f"开始查询 {address}...")
             link = address[1]
             link_type = address[2]
 
@@ -50,15 +52,17 @@ class CrawlerThread(QThread):
                 delay = random.uniform(2.0, 5.0)
             else:
                 delay = random.uniform(5.0, 10.0)
-            self.update_log.emit(f"爬取 {link}，等待 {delay} 秒...")
+            self.update_log.emit(f"查询 {link}，等待 {delay} 秒...")
             time.sleep(delay)
 
-            # 获取域名并找到对应的爬取策略
+            # 获取域名并找到对应的查询策略
             domain = urlparse(link).netloc
             strategy = self.strategy_manager.get_strategy(domain)
 
             if strategy:
-                resulta = strategy(link, link_type)
+                print(f"开始查询 {link}...{self.key_words}")
+                resulta = strategy(link, link_type,self.key_words,self.max_day)
+
                 if resulta is None:
                     break
                 parsed_type, parsed_data = resulta
@@ -83,13 +87,13 @@ class CrawlerThread(QThread):
                     self.update_completed.emit(f"成功: {link}， 数据存储于 {parsed_data}。")
                     log.info(f"session {link} has no valid data")
                 else:
-                    self.update_completed.emit(f"成功: {link}，但没有找到对应的爬取策略。")
+                    self.update_completed.emit(f"成功: {link}，但没有找到对应的查询策略。")
                     log.info(f"session {link} has no valid data")
             else:
                 self.update_failed.emit(f"失败: {link}")
                 log.info(f"session {link} has no valid data")
 
-            # 更新待爬取队列
+            # 更新待查询队列
 
     def pause(self):
         self.paused = True
@@ -104,17 +108,18 @@ class CrawlerThread(QThread):
 class WebCrawlerApp(QWidget):
     def __init__(self):
         super().__init__()
-        self.queue = []  # 待爬取队列
+        self.queue = []  # 待查询队列
         self.initUI()
         self.crawler = WebCrawler()
         self.history_manager = HistoryManager()
+        self.key_words = None
 
         self.crawler_thread = None
         self.strategy_manager = CrawlStrategyManager()
 
     def initUI(self):
         # 主布局
-        self.setWindowTitle('爬虫软件')
+        self.setWindowTitle('查询工具软件')
         self.setGeometry(100, 100, 1400, 1000)
         layout = QGridLayout()
 
@@ -148,7 +153,7 @@ class WebCrawlerApp(QWidget):
         keyword_layout.addWidget(self.keyword_input)
         input_layout.addLayout(keyword_layout)
 
-        # 创建爬取目标日期的输入区域
+        # 创建查询目标日期的输入区域
         date_range_layout = QHBoxLayout()
         self.target_days_input = QSpinBox()  # 使用 QSpinBox 让用户输入天数
         self.target_days_input.setRange(1, 9999)  # 设置可输入的范围，1到365天
@@ -195,7 +200,7 @@ class WebCrawlerApp(QWidget):
         self.log_display.setPlaceholderText("日志区域")
         layout.addWidget(self.log_display, 2, 0, 1, 2)  # 日志区域占据上半部分
 
-        # 创建待爬取队列及已完成、失败任务列表
+        # 创建待查询队列及已完成、失败任务列表
         self.queue_list = QTableWidget()
         self.queue_list.setRowCount(len(self.queue) + 1)
         self.queue_list.setColumnCount(2)
@@ -204,13 +209,13 @@ class WebCrawlerApp(QWidget):
         self.queue_list.setEditTriggers(QTableWidget.NoEditTriggers)
 
         self.completed_list = QListWidget()
-        self.completed_list.addItem("已经爬取任务：")  # 添加默认提示项
+        self.completed_list.addItem("已经查询任务：")  # 添加默认提示项
 
         self.failed_list = QListWidget()
         self.failed_list.addItem("失败任务：")  # 添加默认提示项
 
-        layout.addWidget(self.queue_list, 3, 0)  # 待爬取队列占据左下
-        layout.addWidget(self.completed_list, 3, 1)  # 已经爬取任务占据右下
+        layout.addWidget(self.queue_list, 3, 0)  # 待查询队列占据左下
+        layout.addWidget(self.completed_list, 3, 1)  # 已经查询任务占据右下
         layout.addWidget(self.failed_list, 4, 0, 1, 2)  # 失败任务占据最底部
 
         self.setLayout(layout)
@@ -219,6 +224,9 @@ class WebCrawlerApp(QWidget):
         url = self.url_input.text().strip()
         domain = self.website_combo.currentText()
         keyword = self.keyword_input.text().strip()
+        max_day = self.target_days_input.value()
+        print(url,domain,keyword,max_day)
+
         is_ok = False
 
 
@@ -230,7 +238,13 @@ class WebCrawlerApp(QWidget):
                 url = [url]
             else:
                 url = ["http://" + i for i in [
-                    "ggzy.qz.gov.cn", "ggzyjy.jinhua.gov.cn"]]
+            "ggzy.qz.gov.cn",
+            "ggzyjy.jinhua.gov.cn",
+            "ggzy.hzctc.hangzhou.gov.cn",
+            "ggzyjy-eweb.wenzhou.gov.cn",
+            "jxszwsjb.jiaxing.gov.cn",
+            "ggzyjy.huzhou.gov.cn"
+        ]]
 
         elif not url and domain:
             url = [f"http://{domain}/"]
@@ -247,7 +261,7 @@ class WebCrawlerApp(QWidget):
             links = [(1, i, "html")]
             self.queue.extend(links)
 
-        # 更新待爬取队列显示
+        # 更新待查询队列显示
         for link in self.queue:
             new_row_index = 1
             print(link)
@@ -255,8 +269,8 @@ class WebCrawlerApp(QWidget):
             self.queue_list.setItem(new_row_index, 0, QTableWidgetItem(link[1]))
             self.queue_list.setItem(new_row_index, 1, QTableWidgetItem(link[2]))
 
-        # 创建并启动爬虫线程
-        self.crawler_thread = CrawlerThread(self.queue, self.crawler, self.strategy_manager)
+        # 创建并启动查询工具线程
+        self.crawler_thread = CrawlerThread(self.queue, self.crawler, self.strategy_manager,keyword,max_day)
         self.crawler_thread.update_log.connect(self.update_log_display)
         self.crawler_thread.update_completed.connect(self.update_completed_list)
         self.crawler_thread.update_failed.connect(self.update_failed_list)
@@ -274,7 +288,7 @@ class WebCrawlerApp(QWidget):
 
     def update_completed_list(self, message):
         """
-        更新已经爬取任务列表
+        更新已经查询任务列表
         :param message:
         :return:
         """
@@ -291,7 +305,7 @@ class WebCrawlerApp(QWidget):
 
     def update_queue_list(self, queue):
         """
-        更新待爬取队列列表
+        更新待查询队列列表
         :param queue:
         :return:
         """
@@ -331,18 +345,18 @@ class WebCrawlerApp(QWidget):
             row_count = self.queue_list.rowCount()
             for row in range(row_count - 1, 0, -1):
                 self.queue_list.removeRow(row)
-            self.log_display.append("爬虫线程已停止。")
+            self.log_display.append("查询工具线程已停止。")
 
     def pause_crawling(self):
         if self.crawler_thread and self.crawler_thread.isRunning():
             if self.crawler_thread.paused:
                 self.crawler_thread.resume()
-                self.log_display.append("爬虫线程已恢复运行。")
+                self.log_display.append("查询工具线程已恢复运行。")
                 self.pause_button.setText('暂停')
             else:
                 self.crawler_thread.terminate()
                 self.pause_timer.start()
-                self.log_display.append("爬虫线程已暂停。")
+                self.log_display.append("查询工具线程已暂停。")
                 self.crawler_thread.pause()
                 self.pause_button.setText('继续')
 
@@ -355,9 +369,9 @@ class WebCrawlerApp(QWidget):
         msg_box.setWindowTitle("暂停超时提醒")
         msg_box.setText("暂停时间已超过1小时，请选择操作：")
         pause_button = msg_box.addButton("继续暂停", QMessageBox.ActionRole)
-        resume_button = msg_box.addButton("继续爬取", QMessageBox.ActionRole)
+        resume_button = msg_box.addButton("继续查询", QMessageBox.ActionRole)
         ignore_button = msg_box.addButton("忽略提醒", QMessageBox.ActionRole)
-        stop_button = msg_box.addButton("关闭爬虫", QMessageBox.ActionRole)
+        stop_button = msg_box.addButton("关闭查询工具", QMessageBox.ActionRole)
 
         # 显示对话框并等待用户选择
         msg_box.exec_()
@@ -367,16 +381,16 @@ class WebCrawlerApp(QWidget):
             self.pause_timer.start()
             self.log_display.append("继续暂停")
         elif msg_box.clickedButton() == resume_button:
-            # 继续爬取
+            # 继续查询
             self.start_crawling()
-            self.log_display.append("继续爬取")
+            self.log_display.append("继续查询")
         elif msg_box.clickedButton() == ignore_button:
             # 忽略提醒，什么也不做
             self.log_display.append("忽略提醒")
         elif msg_box.clickedButton() == stop_button:
-            # 关闭爬虫
+            # 关闭查询工具
             self.stop_crawling()
-            self.log_display.append("爬虫已停止")
+            self.log_display.append("查询工具已停止")
 
 if __name__ == '__main__':
     app = QApplication(sys.argv)

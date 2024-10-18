@@ -12,8 +12,14 @@ class HistoryManager:
                 columns=['url', 'has_attachment', 'attachment_path', 'platform', 'timestamp', 'description'])
             self.history_df.to_csv(self.csv_file, index=False)  # 创建 CSV 文件
         else:
-            self.history_df = pd.read_csv(self.csv_file)  # 读取现有的 CSV 文件
-
+            try:
+                self.history_df = pd.read_csv(self.csv_file)  # 读取现有的 CSV 文件
+            except pd.errors.EmptyDataError:
+                # 如果 CSV 文件为空，创建一个新的 DataFrame
+                os.remove(self.csv_file)
+                self.history_df = pd.DataFrame(
+                    columns=['url', 'has_attachment', 'attachment_path', 'platform', 'timestamp', 'description'])
+                self.history_df.to_csv(self.csv_file, index=False)  # 创建空 CSV 文件
     def add_to_history(self, url, has_attachment, attachment_path, platform, timestamp, description):
         # 创建一个新记录
         new_record = {

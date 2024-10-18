@@ -4,7 +4,7 @@ class WebCrawler:
     def __init__(self):
         self.crawl_strategy_manager = CrawlStrategyManager()
 
-    def fetch(self, url, level=1):
+    def fetch(self, url, level=1, keyword=None,max_day=30):
         if "ggzy.qz.gov.cn" in str(url):
             strategy = self.crawl_strategy_manager.get_strategy("ggzy.qz.gov.cn")
         elif "ggzyjy.jinhua.gov.cn" in str(url):
@@ -20,7 +20,7 @@ class WebCrawler:
         else:
             return False, None
         # 模拟获取页面内容
-        res = strategy(url, level)
+        res = strategy(url, level, keyword,max_day)
         if res is None:
             return False, None
         return True, res

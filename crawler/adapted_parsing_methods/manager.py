@@ -19,25 +19,28 @@ class CrawlStrategyManager:
         }
 
     def register_strategy(self, domain, strategy_function):
-        """注册一个域名和对应的爬取策略"""
+        """注册一个域名和对应的查询策略"""
         self.strategies[domain] = strategy_function
 
     def get_strategy(self, domain):
-        """获取指定域名的爬取策略"""
+        """获取指定域名的查询策略"""
         log.info(f"Getting strategy for domain: {domain}")
         return self.strategies.get(domain, None)
 
 
-# 示例爬取策略
-def fetch_ggzy_qz(url, link_type):
-    # 针对 ggzy.qz.gov.cn 的爬取策略
+# 示例查询策略
+def fetch_ggzy_qz(url, link_type,keyword,max_day):
+    # 针对 ggzy.qz.gov.cn 的查询策略
     from crawler.adapted_parsing_methods.qz import QzParser
     parser = QzParser(
         url=url,
         headers={
             "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.110 Safari/537.36",
 
-        }
+        },
+        keyword=keyword,
+        max_day=max_day
+
 
     )
 
@@ -70,8 +73,8 @@ def fetch_ggzy_qz(url, link_type):
             return "text", parser.response
 
 
-def fetch_ggzyjy_jinhua(url, link_type):
-    # 针对 ggzyjy.jinhua.gov.cn 的爬取策略
+def fetch_ggzyjy_jinhua(url, link_type,keyword,max_day):
+    # 针对 ggzyjy.jinhua.gov.cn 的查询策略
 
     from crawler.adapted_parsing_methods.jinhua import JinhuaParser
     parser = JinhuaParser(
@@ -79,7 +82,9 @@ def fetch_ggzyjy_jinhua(url, link_type):
         headers={
             "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.110 Safari/537.36",
 
-        }
+        },
+        keyword=keyword,
+        max_day=max_day
 
     )
     if link_type == "html":
@@ -117,31 +122,31 @@ def fetch_ggzy_qz_test(url):
 
 
 def fetch_ggzy_hangzhou(html_content):
-    # 针对 ggzy.hangzhou.gov.cn 的爬取策略
+    # 针对 ggzy.hangzhou.gov.cn 的查询策略
     return f"Fetched data from ggzy.hangzhou.gov.cn: {html_content[:100]}"
 
 
 def fetch_ggzyjyeweb_wenzhou(html_content):
-    # 针对 ggzyjyeweb.wenzhou.gov.cn 的爬取策略
+    # 针对 ggzyjyeweb.wenzhou.gov.cn 的查询策略
     return f"Fetched data from ggzyjyeweb.wenzhou.gov.cn: {html_content[:100]}"
 
 
 def fetch_jxszwsjb_jiaxing(html_content):
-    # 针对 jxszwsjb.jiaxing.gov.cn 的爬取策略
+    # 针对 jxszwsjb.jiaxing.gov.cn 的查询策略
     return f"Fetched data from jxszwsjb.jiaxing.gov.cn: {html_content[:100]}"
 
 
 def fetch_ggzyjy_huzhou(html_content):
-    # 针对 ggzyjy.huzhou.gov.cn 的爬取策略
+    # 针对 ggzyjy.huzhou.gov.cn 的查询策略
     return f"Fetched data from ggzyjy.huzhou.gov.cn: {html_content[:100]}"
 
 
 class AbstractWebCrawler(ABC):
     def __init__(self, url, headers=None, params=None, proxies=None, data=None, method="GET", max_page=None,
-                 keyword=None):
+                 keyword=None,max_day=30):
         """
-        初始化网页爬虫的基础属性。
-        :param url: 爬取目标 URL
+        初始化网页查询工具的基础属性。
+        :param url: 查询目标 URL
         :param headers: HTTP 请求头
         :param params: URL 参数（GET 请求）
         :param proxies: 代理配置
@@ -173,6 +178,7 @@ class AbstractWebCrawler(ABC):
         self.file_path = FILE_PATH
         self.max_page = max_page or 100
         self.keyword = keyword or ""
+        self.max_day = max_day or 30
 
 
     @abstractmethod
@@ -191,7 +197,7 @@ class AbstractWebCrawler(ABC):
 
     def run(self):
         """
-        运行整个爬虫过程：获取内容 -> 解析。
+        运行整个查询工具过程：获取内容 -> 解析。
         """
         if not self.url:
             raise ValueError("URL不能为空。")

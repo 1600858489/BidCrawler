@@ -9,4 +9,7 @@ def set_directory(directory):
 
 LOG_PATH = set_directory('logs')
 FILE_PATH = set_directory("downloads")
+PLATFORM_HASH = {
+
+}
 
