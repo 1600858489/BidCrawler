@@ -6,12 +6,16 @@ def set_directory(directory):
         os.makedirs(file_path)
     return file_path
 
-VERSION = "v0.3.1"
+
+
+VERSION = "v1.1.1"
 LOG_PATH = set_directory('logs')
 FILE_PATH = set_directory("downloads")
 PLATFORM_HASH = {
 
 }
+
+CSV_PATH = os.path.join(FILE_PATH, "中标结果.csv")
 
 DEBUG = True
 

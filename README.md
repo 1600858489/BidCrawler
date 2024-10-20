@@ -71,7 +71,7 @@ pyinstaller --onefile --windowed main.py
 
 如果希望打包到特定位置，可以使用 `--distpath` 参数指定。
 ```sh
-pyinstaller --onefile --windowed --distpath "./pack" --workpath "./pack/build" --specpath "./pack" --icon="F:\python_projcet\BidCrawler\favicon.ico" --name "BidCrawler" main.py
+pyinstaller --onefile --windowed --distpath "./BIdCrawler" --workpath "./BIdCrawler/build" --specpath "./BIdCrawler" --icon="F:\python_projcet\BidCrawler\favicon.ico" --name "BidCrawler" main.py
 ```
 
 
