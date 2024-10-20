@@ -181,7 +181,7 @@ class QzParser(AbstractWebCrawler):
 
     def parse_detail_page(self):
 
-        title = self.html_content.find('title').text.strip()
+        title = self.html_content.find('title').text.strip().replace("/", "")
         content = self.get_content()
         file_info = self.get_file_info()
         is_file = True if file_info else False
