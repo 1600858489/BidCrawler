@@ -17,6 +17,14 @@ class WebCrawler:
             strategy = self.crawl_strategy_manager.get_strategy("jxszwsjb.jiaxing.gov.cn")
         elif "ggzyjy.huzhou.gov.cn" in str(url):
             strategy = self.crawl_strategy_manager.get_strategy("ggzyjy.huzhou.gov.cn")
+        elif "zsztb.zhoushan.gov.cn" in str(url):
+            strategy = self.crawl_strategy_manager.get_strategy("zsztb.zhoushan.gov.cn")
+        elif "ggzy.tzztb.zjtz.gov.cn" in str(url):
+            strategy = self.crawl_strategy_manager.get_strategy("ggzy.tzztb.zjtz.gov.cn")
+        elif "lssggzy.lishui.gov.cn" in str(url):
+            strategy = self.crawl_strategy_manager.get_strategy("lssggzy.lishui.gov.cn")
+
+
         else:
             return False, None
         # 模拟获取页面内容

@@ -3,7 +3,7 @@ import sys
 import time
 from urllib.parse import urlparse
 
-from PyQt5.QtCore import QThread, pyqtSignal
+from PyQt5.QtCore import QThread, pyqtSignal, Qt
 from PyQt5.QtWidgets import QApplication, QWidget, QHBoxLayout, QLineEdit, QPushButton, QTextEdit, \
     QListWidget, QGridLayout, QComboBox, QTableWidget, QTableWidgetItem, QMessageBox, QVBoxLayout, QSpinBox, QLabel
 
@@ -37,6 +37,8 @@ class CrawlerThread(QThread):
         self.stopped = False
 
     def run(self):
+        search_num = 0
+        start_time = time.time()
         while self.queue and not self.stopped:
             if self.paused:
                 time.sleep(1)
@@ -49,9 +51,9 @@ class CrawlerThread(QThread):
 
             # 模拟网络延迟 1 到 5 秒
             if random.random() < 0.9:
-                delay = random.uniform(2.0, 5.0)
+                delay = random.uniform(0.5, 1.5)
             else:
-                delay = random.uniform(5.0, 10.0)
+                delay = random.uniform(2.0, 4.0)
             self.update_log.emit(f"查询 {link}，等待 {delay} 秒...")
             time.sleep(delay)
 
@@ -67,19 +69,23 @@ class CrawlerThread(QThread):
                     break
                 parsed_type, parsed_data = resulta
                 if not parsed_data:
-                    self.update_completed.emit(f"成功: {link}，但没有找到有效数据。")
-                    log.info(f"session {link} has no valid data")
-                    continue
+                    # self.update_completed.emit(f"成功: {link}，但没有找到有效数据。尚未记录入历史记录")
+                    if parsed_type != "url_list":
+                        self.update_failed.emit(f"{link}  查询出现异常，请查看日志。 该条记录尚未记录入历史记录。")
+                        log.info(f"session {link} has no valid data")
+                    else:
+                        self.update_completed.emit(f"成功: {link}，但没有找到有效链接。 请检查条件范围内是否有可寻找数据，以及历史记录是否存在")
+
                 elif parsed_type == "url_list":
                     if not parsed_data:
-                        self.update_completed.emit(f"成功: {link}，但没有找到有效链接。")
+                        self.update_completed.emit(f"成功: {link}，但没有找到有效链接。 请检查条件范围内是否有可寻找数据，以及历史记录是否存在")
                         log.info(f"session {link} has no valid data")
-                        continue
+
                     self.new_queue.emit(parsed_data)
                     self.update_completed.emit(f"成功解析: {link} ，发现 {len(parsed_data)} 个链接。")
                     log.info(f"session {link} has {len(parsed_data)} valid links")
                     time.sleep(1)
-                    self.update_queue.emit(self.queue)
+
                 elif parsed_type == "file_list":
                     self.update_completed.emit(f"成功解析: {link} ，发现 {len(parsed_data)} 个文件。")
                     log.info(f"session {link} has no valid data")
@@ -87,13 +93,40 @@ class CrawlerThread(QThread):
                     self.update_completed.emit(f"成功: {link}， 数据存储于 {parsed_data}。")
                     log.info(f"session {link} has no valid data")
                 else:
-                    self.update_completed.emit(f"成功: {link}，但没有找到对应的查询策略。")
+                    self.update_failed.emit(f"失败: {link}，没有找到对应的查询策略。")
                     log.info(f"session {link} has no valid data")
             else:
-                self.update_failed.emit(f"失败: {link}")
+                self.update_failed.emit(f"失败: {link}，未知错误，请查看日志。")
+
                 log.info(f"session {link} has no valid data")
+            self.update_queue.emit(self.queue)
+            search_num += 1
 
             # 更新待查询队列
+        end_time = time.time()
+        total_seconds = int(end_time - start_time)
+
+        if total_seconds < 60:
+            time_display = f"{total_seconds:.2f}秒"
+        elif total_seconds < 3600:
+            minutes = total_seconds // 60
+            seconds = total_seconds % 60
+            time_display = f"{minutes}分钟 {seconds:.2f}秒"
+        elif total_seconds < 86400:
+            hours = total_seconds // 3600
+            minutes = (total_seconds % 3600) // 60
+            seconds = total_seconds % 60
+            time_display = f"{hours}小时 {minutes}分钟 {seconds:.2f}秒"
+        else:
+            days = total_seconds // 86400
+            hours = (total_seconds % 86400) // 3600
+            minutes = (total_seconds % 3600) // 60
+            seconds = total_seconds % 60
+            time_display = f"{days}天 {hours}小时 {minutes}分钟 {seconds:.2f}秒"
+
+        self.update_log.emit(f"查询完成，共查询 {search_num} 个链接，用时 {time_display}。")
+
+
 
     def pause(self):
         self.paused = True
@@ -118,10 +151,18 @@ class WebCrawlerApp(QWidget):
         self.strategy_manager = CrawlStrategyManager()
 
     def initUI(self):
+
+        self.__version__ =  VERSION
         # 主布局
-        self.setWindowTitle('查询工具软件')
+        self.setWindowTitle(f'查询工具软件-{self.__version__}')
+
         self.setGeometry(100, 100, 1400, 1000)
         layout = QGridLayout()
+
+
+
+
+
 
         # 输入区域布局
         input_layout = QVBoxLayout()
@@ -140,7 +181,10 @@ class WebCrawlerApp(QWidget):
             "ggzy.hzctc.hangzhou.gov.cn",
             "ggzyjy-eweb.wenzhou.gov.cn",
             "jxszwsjb.jiaxing.gov.cn",
-            "ggzyjy.huzhou.gov.cn"
+            "ggzyjy.huzhou.gov.cn",
+            "zsztb.zhoushan.gov.cn",
+            "ggzy.tzztb.zjtz.gov.cn",
+            "lssggzy.lishui.gov.cn"
         ])
         url_layout.addWidget(self.website_combo)
 
@@ -157,7 +201,7 @@ class WebCrawlerApp(QWidget):
         date_range_layout = QHBoxLayout()
         self.target_days_input = QSpinBox()  # 使用 QSpinBox 让用户输入天数
         self.target_days_input.setRange(1, 9999)  # 设置可输入的范围，1到365天
-        self.target_days_input.setValue(1)  # 设置默认值为1
+        self.target_days_input.setValue(7)  # 设置默认值为1
         date_range_label = QLabel('需要查询')
         date_range_layout.addWidget(date_range_label)  # 标签提示
         date_range_layout.addWidget(self.target_days_input)  # 天数输入框
@@ -234,28 +278,32 @@ class WebCrawlerApp(QWidget):
             self.log_display.setText("请输入有效的查询目标 。")
             return
         elif url:
-            if "http" in url:
+            if "https" in url or "http" in url:
                 url = [url]
             else:
-                url = ["http://" + i for i in [
+                url = ["https://" + i for i in [
             "ggzy.qz.gov.cn",
-            "ggzyjy.jinhua.gov.cn",
             "ggzy.hzctc.hangzhou.gov.cn",
             "ggzyjy-eweb.wenzhou.gov.cn",
             "jxszwsjb.jiaxing.gov.cn",
-            "ggzyjy.huzhou.gov.cn"
-        ]]
+            "ggzyjy.huzhou.gov.cn",
+            "ggzy.tzztb.zjtz.gov.cn",
+            "lssggzy.lishui.gov.cn"
+        ]].extend(["http://"+"zsztb.zhoushan.gov.cn","http://"+"ggzyjy.jinhua.gov.cn"])
 
         elif not url and domain:
-            url = [f"http://{domain}/"]
+            if domain in ["zsztb.zhoushan.gov.cn","ggzyjy.jinhua.gov.cn",]:
+                url = ["http://"+domain]
+            else:
+                url = [f"https://{domain}/"]
 
         # 获取页面内容
         for i in url:
-            print(i)
-            status, html = self.crawler.fetch(i, "html")
-            if not html:
-                self.log_display.setText("获取页面内容失败。")
-                return
+            # print(i)
+            # status, html = self.crawler.fetch(i, "html")
+            # if not html:
+            #     self.log_display.setText("获取页面内容失败。")
+            #     return
 
             # 提取所有链接
             links = [(1, i, "html")]
@@ -309,6 +357,7 @@ class WebCrawlerApp(QWidget):
         :param queue:
         :return:
         """
+
         header = [self.queue_list.horizontalHeaderItem(i).text() for i in range(self.queue_list.columnCount())]
         self.queue_list.clear()
         self.queue_list.setHorizontalHeaderLabels(header)

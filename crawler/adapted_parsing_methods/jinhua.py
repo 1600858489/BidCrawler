@@ -1,12 +1,9 @@
-import datetime
-import os
+
 from urllib.parse import urlparse, parse_qs
 
-from bs4 import BeautifulSoup
 
 from core.history_manager import HistoryManager
 from log.logger import Logger
-from .manager import AbstractWebCrawler
 from .qz import QzParser
 
 log = Logger().get_logger()
@@ -29,11 +26,16 @@ def get_ground_table_url(url, html):
     # return [(1, res[1], "table")]
 
 
-
-
 class JinhuaParser(QzParser):
+    """
+    This class is used to parse the html content of Jinhua website.
+    url: http://ggzyjy.jinhua.gov.cn
+    """
+
+    PAGE_ID = "7642408"
 
     def parse_html(self):
         ground_table_urls = get_ground_table_url(self.url, self.html_content)
         self.response_type = 'url_list'
         self.response = ground_table_urls
+

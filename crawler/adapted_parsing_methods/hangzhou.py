@@ -172,6 +172,12 @@ class HangzhouParser(QzParser):
                     file_hz = file_info[1].split(".")[-1]
                 except IndexError:
                     file_hz = ""
+                try:
+                    file_url = self.get_download_file_url(file_info[0],file_info[1])
+                except Exception as e:
+                    log.error(f"file_info is {file_info},file tag is {link}")
+                    log.error(f"Get file url error: {e}, {traceback.format_exc()}")
+
                 files_info.append(
                     {
                         "name": file_info[0] + "." + file_hz,
@@ -188,7 +194,11 @@ class HangzhouParser(QzParser):
             "DirType": 3,
         }
         url = "https://ggzy.hzctc.hangzhou.gov.cn/AfficheShow/GetDownLoadUrl"
-        file_url = self.session.post(url, data=data, headers=self.headers)
+        try:
+            file_url = self.session.post(url, data=data, headers=self.headers)
+        except Exception as e:
+            log.error(f"Get file url error: {e}, {traceback.format_exc()}")
+            return ""
         if file_url.status_code == 200:
             file_url = file_url.text.strip()
             return file_url

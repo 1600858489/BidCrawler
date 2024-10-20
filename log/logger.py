@@ -28,11 +28,11 @@ class Logger:
         log_name = datetime.datetime.now().strftime('%Y%m%d') + '.log'
         log_path = os.path.join(LOG_PATH, log_name)
 
-        file_handler = TimedRotatingFileHandler(log_path, when='midnight', interval=1, backupCount=7)
+        file_handler = TimedRotatingFileHandler(log_path, when='midnight', interval=1, backupCount=7,encoding='utf-8')
         file_handler.setLevel(logging.DEBUG)
 
         # 设置日志格式
-        formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+        formatter = logging.Formatter('%(asctime)s - %(filename)s - %(lineno)d - %(name)s - %(levelname)s - %(message)s')
         console_handler.setFormatter(formatter)
         file_handler.setFormatter(formatter)
 

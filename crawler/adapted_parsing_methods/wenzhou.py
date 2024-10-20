@@ -40,7 +40,7 @@ class WenzhouParser(QzParser):
         data_list = []
         for url in urls:
             url = self.scheme + '://' + self.domain + url
-            if self.in_time(url):
+            if self.not_in_time(url):
                 continue
             if history_manager.is_in_history(url):
                 continue
@@ -57,7 +57,6 @@ class WenzhouParser(QzParser):
     def get_file_info(self):
         file_info = self.html_content.find_all('a',href=True)
         res = [i for i in file_info if "cmd=download" in i.get('href')]
-        print(res)
         return res
 
     def get_content(self):

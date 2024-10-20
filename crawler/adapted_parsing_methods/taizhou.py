@@ -20,9 +20,12 @@ class TaizhouParser(QzParser):
     url: http://ggzy.tzztb.zjtz.gov.cn
     """
 
+    MAIN_TABLE_PAGE_URL = "https://ggzy.tzztb.zjtz.gov.cn/jyxx/002001/trade_infor.html"
+
     def parse_html(self):
-        if self.url == "http://ggzy.tzztb.zjtz.gov.cn/" or self.url == "https://ggzy.tzztb.zjtz.gov.cn/":
-            url = "https://ggzy.tzztb.zjtz.gov.cn/jyxx/002001/trade_infor.html"
+        parsed_url = urlparse(self.url)
+        if parsed_url.path == "/":
+            url = self.MAIN_TABLE_PAGE_URL
             res = [(1, url, "html")]
             self.response_type = "url_list"
             self.response = res

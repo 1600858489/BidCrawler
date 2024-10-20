@@ -1,3 +1,4 @@
+import traceback
 from abc import ABC, abstractmethod
 
 import requests
@@ -12,10 +13,14 @@ class CrawlStrategyManager:
         self.strategies = {
             "ggzy.qz.gov.cn": fetch_ggzy_qz,
             "ggzyjy.jinhua.gov.cn": fetch_ggzyjy_jinhua,
-            "ggzy.hangzhou.gov.cn": fetch_ggzy_hangzhou,
-            "ggzyjyeweb.wenzhou.gov.cn": fetch_ggzyjyeweb_wenzhou,
+            "ggzy.hzctc.hangzhou.gov.cn": fetch_ggzy_hangzhou,
+            "ggzyjy-eweb.wenzhou.gov.cn": fetch_ggzyjyeweb_wenzhou,
             "jxszwsjb.jiaxing.gov.cn": fetch_jxszwsjb_jiaxing,
-            "ggzyjy.huzhou.gov.cn": fetch_ggzyjy_huzhou
+            "ggzyjy.huzhou.gov.cn": fetch_ggzyjy_huzhou,
+            "zsztb.zhoushan.gov.cn": fetch_zsztb_zhoushan,
+            "ggzy.tzztb.zjtz.gov.cn": fetch_tzztb_zjtz,
+            "lssggzy.lishui.gov.cn": fetch_lssggzy_lishui
+
         }
 
     def register_strategy(self, domain, strategy_function):
@@ -28,117 +33,107 @@ class CrawlStrategyManager:
         return self.strategies.get(domain, None)
 
 
-# 示例查询策略
-def fetch_ggzy_qz(url, link_type,keyword,max_day):
-    # 针对 ggzy.qz.gov.cn 的查询策略
+def fetch_data(parser, link_type):
+    """使用解析器获取数据，减少重复代码"""
+    parser.run()
+    if parser.response_type == "url_list":
+        return "url_list", parser.response
+    elif parser.response_type in ["html", "json"]:
+        return parser.response_type, parser.html_content if parser.response_type == "html" else parser.response
+    else:
+        return "text", parser.response
+
+def fetch_ggzy_qz(url, link_type, keyword, max_day):
     from crawler.adapted_parsing_methods.qz import QzParser
-    parser = QzParser(
-        url=url,
-        headers={
-            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.110 Safari/537.36",
+    try:
+        parser = QzParser(url=url, headers={"User-Agent": "Mozilla/5.0"}, keyword=keyword, max_day=max_day)
+        parser.url_type = link_type
+        return fetch_data(parser, link_type)
+    except Exception as e:
+        log.error(f"Error in fetch_ggzy_qz: {e},{traceback.format_exc()}")
+        return "text", None
 
-        },
-        keyword=keyword,
-        max_day=max_day
-
-
-    )
-
-    if link_type == "html":
-        parser.url_type = "html"
-        parser.run()
-        if parser.response_type == "url_list":
-            return "url_list", parser.response
-        elif parser.response_type == "html":
-            return "html", parser.html_content
-    elif link_type == "table":
-        parser.url_type = "table"
-        parser.run()
-        if parser.response_type == "url_list":
-            return "url_list", parser.response
-        elif parser.response_type == "html":
-            return "html", parser.html_content
-        elif parser.response_type == "json":
-            return "json", parser.response
-    elif link_type == "detail_page":
-        parser.url_type = "detail_page"
-        parser.run()
-        if parser.response_type == "url_list":
-            return "url_list", parser.response
-        elif parser.response_type == "html":
-            return "html", parser.html_content
-        elif parser.response_type == "json":
-            return "json", parser.response
-        else:
-            return "text", parser.response
-
-
-def fetch_ggzyjy_jinhua(url, link_type,keyword,max_day):
-    # 针对 ggzyjy.jinhua.gov.cn 的查询策略
-
+def fetch_ggzyjy_jinhua(url, link_type, keyword, max_day):
     from crawler.adapted_parsing_methods.jinhua import JinhuaParser
-    parser = JinhuaParser(
-        url=url,
-        headers={
-            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.110 Safari/537.36",
+    try:
+        parser = JinhuaParser(url=url, headers={"User-Agent": "Mozilla/5.0"}, keyword=keyword, max_day=max_day)
+        parser.url_type = link_type
+        return fetch_data(parser, link_type)
+    except Exception as e:
+        log.error(f"Error in fetch_ggzyjy_jinhua: {e},{traceback.format_exc()}")
+        return "text", None
 
-        },
-        keyword=keyword,
-        max_day=max_day
+def fetch_ggzy_hangzhou(url, link_type, keyword, max_day):
+    from crawler.adapted_parsing_methods.hangzhou import HangzhouParser
+    try:
+        parser = HangzhouParser(url=url, headers={"User-Agent": "Mozilla/5.0"}, keyword=keyword, max_day=max_day)
+        parser.url_type = link_type
+        return fetch_data(parser, link_type)
+    except Exception as e:
+        log.error(f"Error in fetch_ggzy_hangzhou: {e}，{traceback.format_exc()}")
+        return "text", None
 
-    )
-    if link_type == "html":
-        parser.url_type = "html"
-        parser.run()
-        if parser.response_type == "url_list":
-            return "url_list", parser.response
-        elif parser.response_type == "html":
-            return "html", parser.html_content
-    elif link_type == "table":
-        parser.url_type = "table"
+def fetch_ggzyjyeweb_wenzhou(url, link_type, keyword, max_day):
+    from crawler.adapted_parsing_methods.wenzhou import WenzhouParser
+    try:
+        parser = WenzhouParser(url=url, headers={"User-Agent": "Mozilla/5.0"}, keyword=keyword, max_day=max_day)
+        parser.url_type = link_type
+        return fetch_data(parser, link_type)
+    except Exception as e:
+        log.error(f"Error in fetch_ggzyjyeweb_wenzhou: {e},{traceback.format_exc()}")
+        return "text", None
 
-        parser.run()
-        if parser.response_type == "url_list":
-            return "url_list", parser.response
-        elif parser.response_type == "html":
-            return "html", parser.html_content
-        elif parser.response_type == "json":
-            return "json", parser.response
-    elif link_type == "detail_page":
-        parser.url_type = "detail_page"
-        parser.run()
-        if parser.response_type == "url_list":
-            return "url_list", parser.response
-        elif parser.response_type == "html":
-            return "html", parser.html_content
-        elif parser.response_type == "json":
-            return "json", parser.response
-        else:
-            return "text", parser.response
+def fetch_jxszwsjb_jiaxing(url, link_type, keyword, max_day):
+    from crawler.adapted_parsing_methods.jiaxing import JiaxingParser
+    try:
+        parser = JiaxingParser(url=url, headers={"User-Agent": "Mozilla/5.0"}, keyword=keyword, max_day=max_day)
+        parser.url_type = link_type
+        return fetch_data(parser, link_type)
+    except Exception as e:
+        log.error(f"Error in fetch_jxszwsjb_jiaxing: {e},{traceback.format_exc()}")
+        return "text", None
+
+def fetch_ggzyjy_huzhou(url, link_type, keyword, max_day):
+    from crawler.adapted_parsing_methods.huzhou import HuzhouParser
+    try:
+        parser = HuzhouParser(url=url, headers={"User-Agent": "Mozilla/5.0"}, keyword=keyword, max_day=max_day)
+        parser.url_type = link_type
+        return fetch_data(parser, link_type)
+    except Exception as e:
+        log.error(f"Error in fetch_ggzyjy_huzhou: {e}，{traceback.format_exc()}")
+        return "text", None
+
+def fetch_zsztb_zhoushan(url, link_type, keyword, max_day):
+     from crawler.adapted_parsing_methods.zhoushan import ZhoushanParser
+     try:
+         parser = ZhoushanParser(url=url, headers={"User-Agent": "Mozilla/5.0"}, keyword=keyword, max_day=max_day)
+         parser.url_type = link_type
+         return fetch_data(parser, link_type)
+     except Exception as e:
+         log.error(f"Error in fetch_zsztb_zhoushan: {e},{traceback.format_exc()}")
+         return "text", None
+
+def fetch_tzztb_zjtz(url, link_type, keyword, max_day):
+    from crawler.adapted_parsing_methods.taizhou import TaizhouParser
+    try:
+        parser = TaizhouParser(url=url, headers={"User-Agent": "Mozilla/5.0"}, keyword=keyword, max_day=max_day)
+        parser.url_type = link_type
+        return fetch_data(parser, link_type)
+    except Exception as e:
+        log.error(f"Error in fetch_tzztb_zjtz: {e},{traceback.format_exc()}")
+        return "text", None
+
+def fetch_lssggzy_lishui(url, link_type, keyword, max_day):
+     from crawler.adapted_parsing_methods.lishui import LishuiParser
+     try:
+         parser = LishuiParser(url=url, headers={"User-Agent": "Mozilla/5.0"}, keyword=keyword, max_day=max_day)
+         parser.url_type = link_type
+         return fetch_data(parser, link_type)
+     except Exception as e:
+         log.error(f"Error in fetch_lssggzy_lishui: {e},{traceback.format_exc()}")
+         return "text", None
 
 
-def fetch_ggzy_qz_test(url):
-    return f"Fetched data from ggzyjy.jinhua.gov.cn: {url[:100]}"
-
-
-def fetch_ggzy_hangzhou(html_content):
-    # 针对 ggzy.hangzhou.gov.cn 的查询策略
-    return f"Fetched data from ggzy.hangzhou.gov.cn: {html_content[:100]}"
-
-
-def fetch_ggzyjyeweb_wenzhou(html_content):
-    # 针对 ggzyjyeweb.wenzhou.gov.cn 的查询策略
-    return f"Fetched data from ggzyjyeweb.wenzhou.gov.cn: {html_content[:100]}"
-
-
-def fetch_jxszwsjb_jiaxing(html_content):
-    # 针对 jxszwsjb.jiaxing.gov.cn 的查询策略
-    return f"Fetched data from jxszwsjb.jiaxing.gov.cn: {html_content[:100]}"
-
-
-def fetch_ggzyjy_huzhou(html_content):
-    # 针对 ggzyjy.huzhou.gov.cn 的查询策略
-    return f"Fetched data from ggzyjy.huzhou.gov.cn: {html_content[:100]}"
 
 
 class AbstractWebCrawler(ABC):
@@ -176,7 +171,7 @@ class AbstractWebCrawler(ABC):
         self.response_type = ""
         self.response = None
         self.file_path = FILE_PATH
-        self.max_page = max_page or 100
+        self.max_page = max_page or 1
         self.keyword = keyword or ""
         self.max_day = max_day or 30
 
