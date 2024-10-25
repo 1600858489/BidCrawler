@@ -3,7 +3,7 @@ import sys
 import time
 from urllib.parse import urlparse
 
-from PyQt5.QtCore import QThread, pyqtSignal, Qt
+from PyQt5.QtCore import QThread, pyqtSignal
 from PyQt5.QtWidgets import QApplication, QWidget, QHBoxLayout, QLineEdit, QPushButton, QTextEdit, \
     QListWidget, QGridLayout, QComboBox, QTableWidget, QTableWidgetItem, QMessageBox, QVBoxLayout, QSpinBox, QLabel
 
@@ -22,9 +22,8 @@ class CrawlerThread(QThread):
     update_queue = pyqtSignal(list)
     new_queue = pyqtSignal(list)
 
-
-
-    def __init__(self, queue, crawler, strategy_manager,key_words,max_day):
+    def __init__(self, queue, crawler, strategy_manager, key_words, max_day, api_key, api_base, large_model,
+                 enable_delay):
         super().__init__()
         self.queue = queue
         self.crawler = crawler
@@ -35,6 +34,10 @@ class CrawlerThread(QThread):
 
         self.paused = False
         self.stopped = False
+        self.api_key = api_key
+        self.api_base = api_base
+        self.large_model = large_model
+        self.enable_delay = enable_delay
 
     def run(self):
         search_num = 0
@@ -48,14 +51,18 @@ class CrawlerThread(QThread):
             link = address[1]
             link_type = address[2]
 
+            if self.enable_delay:
 
-            # 模拟网络延迟 1 到 5 秒
-            if random.random() < 0.9:
-                delay = random.uniform(0.5, 1.5)
+                # 模拟网络延迟 1 到 5 秒
+                if random.random() < 0.9:
+                    delay = random.uniform(0.5, 1.5)
+                else:
+                    delay = random.uniform(2.0, 4.0)
+                self.update_log.emit(f"查询 {link}，等待 {delay} 秒...")
+                time.sleep(delay)
             else:
-                delay = random.uniform(2.0, 4.0)
-            self.update_log.emit(f"查询 {link}，等待 {delay} 秒...")
-            time.sleep(delay)
+                self.update_log.emit(f"查询 {link}...")
+
 
             # 获取域名并找到对应的查询策略
             domain = urlparse(link).netloc
@@ -197,6 +204,30 @@ class WebCrawlerApp(QWidget):
         keyword_layout.addWidget(self.keyword_input)
         input_layout.addLayout(keyword_layout)
 
+        # 输入 API Key 区域
+        api_key_layout = QHBoxLayout()
+        self.api_key_input = QLineEdit()
+        self.api_key_input.setPlaceholderText('请输入 API Key')
+        api_key_layout.addWidget(self.api_key_input)
+        input_layout.addLayout(api_key_layout)
+
+        # 输入 API Base 区域
+        api_base_layout = QHBoxLayout()
+        self.api_base_input = QLineEdit()
+        self.api_base_input.setPlaceholderText('请输入 API Base URL')
+        api_base_layout.addWidget(self.api_base_input)
+        input_layout.addLayout(api_base_layout)
+
+        # 是否启用大模型选择框
+        self.large_model_checkbox = QComboBox()
+        self.large_model_checkbox.addItems(['启用大模型', '不启用大模型'])
+        input_layout.addWidget(self.large_model_checkbox)
+
+        # 是否启用延迟选择框
+        self.enable_delay_checkbox = QComboBox()
+        self.enable_delay_checkbox.addItems(['启用延迟', '不启用延迟'])
+        input_layout.addWidget(self.enable_delay_checkbox)
+
         # 创建查询目标日期的输入区域
         date_range_layout = QHBoxLayout()
         self.target_days_input = QSpinBox()  # 使用 QSpinBox 让用户输入天数
@@ -269,6 +300,10 @@ class WebCrawlerApp(QWidget):
         domain = self.website_combo.currentText()
         keyword = self.keyword_input.text().strip()
         max_day = self.target_days_input.value()
+        api_key = self.api_key_input.text().strip()
+        api_base = self.api_base_input.text().strip()
+        large_model = self.large_model_checkbox.currentText() == True
+        enable_delay = self.enable_delay_checkbox.currentText() == True
         print(url,domain,keyword,max_day)
 
         is_ok = False
@@ -318,7 +353,8 @@ class WebCrawlerApp(QWidget):
             self.queue_list.setItem(new_row_index, 1, QTableWidgetItem(link[2]))
 
         # 创建并启动查询工具线程
-        self.crawler_thread = CrawlerThread(self.queue, self.crawler, self.strategy_manager,keyword,max_day)
+        self.crawler_thread = CrawlerThread(self.queue, self.crawler, self.strategy_manager, keyword, max_day, api_key,
+                                            api_base, large_model, enable_delay)
         self.crawler_thread.update_log.connect(self.update_log_display)
         self.crawler_thread.update_completed.connect(self.update_completed_list)
         self.crawler_thread.update_failed.connect(self.update_failed_list)
