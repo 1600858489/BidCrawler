@@ -1,7 +1,9 @@
-from openai import OpenAI
-import os
+import base64
+import json
 
-from prompt import  *
+from openai import OpenAI
+
+from prompt import *
 
 
 class OpenAIChatClient:
@@ -16,6 +18,15 @@ class OpenAIChatClient:
 
         # 初始化 OpenAI 客户端
         self.client = OpenAI(api_key=self.api_key,base_url=self.api_base)
+
+    def image_to_base64(self, image_path):
+        """
+        将图片转换为 Base64 编码
+        """
+        with open(image_path, "rb") as image_file:
+            return base64.b64encode(image_file.read()).decode('utf-8')
+
+
 
     def get_response(self, prompt, model="gpt-4o-mini", response_format="json"):
         """
@@ -33,11 +44,24 @@ class OpenAIChatClient:
             )
             # 获取回答内容
             response_content = completion.choices[0].message.content
-            return response_content
+            try:
+                response_content = eval(response_content)
+                response_content = json.dumps(response_content, ensure_ascii=False)
+                return response_content
+            except:
+                return None
 
         except Exception as e:
             print(f"请求出错: {e}")
             return None
+
+    def upload_image(self, image_path):
+        """
+        上传图片并返回识别结果
+        """
+        with open(image_path, "rb") as f:
+            response = self.client.upload(f)
+            return response.get("image_url")
 
 
 # 示例用法
@@ -46,8 +70,42 @@ if __name__ == "__main__":
     client = OpenAIChatClient()
 
     prompt = """
-    建设工程中标通知书台州市建设咨询有限公司：经评标委员会评审及中标候选人公示，现确定贵单位中标。请收到本通知书30天内，到我单位签订建设工程合同。特此通知。招标项目黄岩区江口街道白云山西路南侧、应家山路西侧地块房产建设项目(全过程工程咨询)备案登记号台建招备[2024]2084号招标方式公开招标招标人台州新跃建设有限公司招标代理机构台州市建航工程管理有限公司招标内容招标范围及招标内容具体如下：全过程造价控制具体如下：预算审核，施工过程进度款、变更、签证、索赔经济性审核，无价材料清单审核、询价、组价、定价谈判，参与主要设备/材料市场考察，结算审核复核、资金计划编制/审核，投资动态台账管理，出现投资控制异常情况预警并协助建设单位提出有效建议及措施。施工阶段监理：配合项目前期准备工作、施工阶段全过程监理、配合结算审核及保修阶段的监理，包括施工管理及移交管理，对整个工程建设的质量、进度、投资、安全、合同、信息及组织协调所有方面进行全面控制和管理、工程保修期内的缺陷修复督促管理，具体监理工作按《建设工程监理规范》（GB50319-2013）、《房屋建筑和市政基础设施工程竣工验收规定》及《施工旁站监理管理办法》组织实施。建设规模项目总用地面积24564㎡，总建筑面积约75740㎡。容积率≤2.2，地上建筑面积≤54040㎡（含物业等相关配套用房），建筑密度≤30%，建筑高度≤60m（自室外地坪算起，其中住宅建筑高度≥36m）。回购房屋用房建筑面积≥52200㎡（不含物业等相关配套用房，至少522套），要求A套型(建筑面积60㎡)≥72套，B套型(建筑面积80㎡)≥162套，C型(建筑面积100㎡)≥72套，D型(建筑面积120㎡)≥108 套，E型(建筑面积 137㎡)≥108 套。中标人台州市建设咨询有限公司项目总负责人牟汉林中标价(元)3192983质量标准（1）提供符合现行规范、标准及设计要求项目产品的高质量咨询服务；（2）合理控制项目造价、质量、安全、工期，通过竣工验收且满足招标人对本项目的质量要求。服务期自发出中标通知书之日起，至本项目质量缺陷期（24个月）满后6个月。备注项目负责人：牟汉林证书号：33006895身份证号码：330106********0011招标代理（盖章）：招标人（盖章）：监管部门（盖章）：招标代理项目负责人：王华萍2024年10月24
-    """
+金汤小米烩三宝
+菜品介绍
+金汤小米烩三宝是一道宴请上等贵宾的客家菜。此菜品以南瓜翅汤为基底，小米为主料，搭配三种风味独特的鲜美食材，如海参，鱼肚，鱼翅。金黄色的南瓜翅汤和小米相得益彰，色泽金黄，口感浓郁。此菜不仅容易消化，还富含多种维生素和矿物质
+
+原料
+小米：
+南瓜茸：
+海参：
+鱼肚：
+翅汤；
+鱼翅；
+青豆：
+姜葱
+盐：适量
+白胡椒粉：适量
+鸡精：适量
+淀粉：适量
+ 黄酒
+清水：适量
+
+做法
+
+1. 小米淘洗干净，用清水浸泡30分钟备用。
+2. 南瓜去皮去籽，切成小块，蒸熟制成茸。
+3. 海参，鱼肚切块
+
+1. 在锅中加入适量清水，加姜葱料酒，放入海参鱼肚，大火煮沸后倒出沥干水份。
+
+2.取锅加入翅汤，南瓜茸调色，
+加入盐、白胡椒粉和鸡精调味，加入海参鱼肚，鱼翅，青豆，煮至入味勾芡即可关火出锅装盘即可。
+
+营养功效
+金汤小米烩三宝富含蛋白质、膳食纤维、维生素A、维生素C以及多种矿物质，具有开胃健脾、养胃护胃的功效。
+
+进程已结束，退出代码为 0
+        """
     response = client.get_response(prompt)
 
     if response:

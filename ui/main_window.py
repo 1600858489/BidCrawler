@@ -24,6 +24,18 @@ class CrawlerThread(QThread):
 
     def __init__(self, queue, crawler, strategy_manager, key_words, max_day, api_key, api_base, large_model,
                  enable_delay):
+        """
+        初始化查询线程
+        :param queue: 待查询队列
+        :param crawler: 查询工具模块
+        :param strategy_manager: 查询策略管理器
+        :param key_words: 查询关键词
+        :param max_day: 最大查询天数
+        :param api_key: 百度API Key
+        :param api_base: 百度API Base
+        :param large_model: 是否使用大模型
+        :param enable_delay: 是否启用延迟
+        """
         super().__init__()
         self.queue = queue
         self.crawler = crawler
@@ -183,15 +195,15 @@ class WebCrawlerApp(QWidget):
         # 网站选择下拉框
         self.website_combo = QComboBox()
         self.website_combo.addItems([
-            "ggzy.qz.gov.cn",
-            "ggzyjy.jinhua.gov.cn",
-            "ggzy.hzctc.hangzhou.gov.cn",
-            "ggzyjy-eweb.wenzhou.gov.cn",
-            "jxszwsjb.jiaxing.gov.cn",
-            "ggzyjy.huzhou.gov.cn",
-            "zsztb.zhoushan.gov.cn",
-            "ggzy.tzztb.zjtz.gov.cn",
-            "lssggzy.lishui.gov.cn"
+            PLATFORM_HASH["ggzy.qz.gov.cn"],
+            PLATFORM_HASH["ggzyjy.jinhua.gov.cn"],
+            PLATFORM_HASH["ggzy.hzctc.hangzhou.gov.cn"],
+            PLATFORM_HASH["ggzyjy-eweb.wenzhou.gov.cn"],
+            PLATFORM_HASH["jxszwsjb.jiaxing.gov.cn"],
+            PLATFORM_HASH["ggzyjy.huzhou.gov.cn"],
+            PLATFORM_HASH["zsztb.zhoushan.gov.cn"],
+            PLATFORM_HASH["ggzy.tzztb.zjtz.gov.cn"],
+            PLATFORM_HASH["lssggzy.lishui.gov.cn"]
         ])
         url_layout.addWidget(self.website_combo)
 
@@ -304,10 +316,12 @@ class WebCrawlerApp(QWidget):
         api_base = self.api_base_input.text().strip()
         large_model = self.large_model_checkbox.currentText() == True
         enable_delay = self.enable_delay_checkbox.currentText() == True
-        print(url,domain,keyword,max_day)
 
-        is_ok = False
-
+        for k, v in PLATFORM_HASH.items():
+            if v == domain:
+                domain = k
+                break
+        print(url, domain, keyword, max_day)
 
         if not url and not domain:
             self.log_display.setText("请输入有效的查询目标 。")

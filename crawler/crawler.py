@@ -32,5 +32,3 @@ class WebCrawler:
         if res is None:
             return False, None
         return True, res
-
-
