@@ -152,6 +152,7 @@ class QzParser(AbstractWebCrawler):
 
 
     def save_announcement(self,file_path):
+        file_path = CSV_PATH
         table =  self.html_content.find('table', style="font-size:18px; font-family:'宋体'; line-height:2")
 
 # 存储提取的数据
@@ -190,8 +191,7 @@ class QzParser(AbstractWebCrawler):
             os.makedirs(one_file_path)
 
         if "中标结果公告" in  one_file_path:
-            announcement_path = one_file_path.replace("/" + title, "")
-            self.save_announcement(announcement_path)
+            self.save_announcement()
 
         while file_info:
             file = file_info.pop(0)
