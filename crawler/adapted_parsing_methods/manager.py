@@ -1,3 +1,4 @@
+import json
 import traceback
 from abc import ABC, abstractmethod
 
@@ -9,6 +10,7 @@ from log.logger import Logger
 log = Logger().get_logger()
 
 class CrawlStrategyManager:
+    config_file = CONFIG_PATH
     def __init__(self):
         self.strategies = {
             "ggzy.qz.gov.cn": fetch_ggzy_qz,
@@ -22,6 +24,21 @@ class CrawlStrategyManager:
             "lssggzy.lishui.gov.cn": fetch_lssggzy_lishui
 
         }
+
+    @classmethod
+    def load_config(cls):
+        if os.path.exists(cls.config_file):
+            with open(cls.config_file, 'r', encoding='utf-8') as file:
+                return json.load(file)
+        return {
+            'api_key': '',
+            'api_base': ''
+        }
+
+    @classmethod
+    def save_config(cls, config):
+        with open(cls.config_file, 'w', encoding='utf-8') as file:
+            json.dump(config, file)
 
     def register_strategy(self, domain, strategy_function):
         """注册一个域名和对应的查询策略"""
@@ -43,90 +60,108 @@ def fetch_data(parser, link_type):
     else:
         return "text", parser.response
 
-def fetch_ggzy_qz(url, link_type, keyword, max_day):
+
+def fetch_ggzy_qz(url, link_type, keyword, max_day, api_key, api_base, large_model):
     from crawler.adapted_parsing_methods.qz import QzParser
     try:
-        parser = QzParser(url=url, headers={"User-Agent": "Mozilla/5.0"}, keyword=keyword, max_day=max_day)
+        parser = QzParser(url=url, headers={"User-Agent": "Mozilla/5.0"}, keyword=keyword, max_day=max_day,
+                          api_key=api_key, api_base=api_base, large_model=large_model)
         parser.url_type = link_type
         return fetch_data(parser, link_type)
     except Exception as e:
         log.error(f"Error in fetch_ggzy_qz: {e},{traceback.format_exc()}")
         return "text", None
 
-def fetch_ggzyjy_jinhua(url, link_type, keyword, max_day):
+
+def fetch_ggzyjy_jinhua(url, link_type, keyword, max_day, api_key, api_base, large_model):
     from crawler.adapted_parsing_methods.jinhua import JinhuaParser
     try:
-        parser = JinhuaParser(url=url, headers={"User-Agent": "Mozilla/5.0"}, keyword=keyword, max_day=max_day)
+        parser = JinhuaParser(url=url, headers={"User-Agent": "Mozilla/5.0"}, keyword=keyword, max_day=max_day,
+                              api_key=api_key, api_base=api_base, large_model=large_model)
         parser.url_type = link_type
         return fetch_data(parser, link_type)
     except Exception as e:
         log.error(f"Error in fetch_ggzyjy_jinhua: {e},{traceback.format_exc()}")
         return "text", None
 
-def fetch_ggzy_hangzhou(url, link_type, keyword, max_day):
+
+def fetch_ggzy_hangzhou(url, link_type, keyword, max_day, api_key, api_base, large_model):
     from crawler.adapted_parsing_methods.hangzhou import HangzhouParser
     try:
-        parser = HangzhouParser(url=url, headers={"User-Agent": "Mozilla/5.0"}, keyword=keyword, max_day=max_day)
+        parser = HangzhouParser(url=url, headers={"User-Agent": "Mozilla/5.0"}, keyword=keyword, max_day=max_day,
+                                api_key=api_key, api_base=api_base, large_model=large_model)
         parser.url_type = link_type
         return fetch_data(parser, link_type)
     except Exception as e:
         log.error(f"Error in fetch_ggzy_hangzhou: {e}，{traceback.format_exc()}")
         return "text", None
 
-def fetch_ggzyjyeweb_wenzhou(url, link_type, keyword, max_day):
+
+def fetch_ggzyjyeweb_wenzhou(url, link_type, keyword, max_day, api_key, api_base, large_model):
     from crawler.adapted_parsing_methods.wenzhou import WenzhouParser
     try:
-        parser = WenzhouParser(url=url, headers={"User-Agent": "Mozilla/5.0"}, keyword=keyword, max_day=max_day)
+        parser = WenzhouParser(url=url, headers={"User-Agent": "Mozilla/5.0"}, keyword=keyword, max_day=max_day,
+                               api_key=api_key, api_base=api_base, large_model=large_model)
         parser.url_type = link_type
         return fetch_data(parser, link_type)
     except Exception as e:
         log.error(f"Error in fetch_ggzyjyeweb_wenzhou: {e},{traceback.format_exc()}")
         return "text", None
 
-def fetch_jxszwsjb_jiaxing(url, link_type, keyword, max_day):
+
+def fetch_jxszwsjb_jiaxing(url, link_type, keyword, max_day, api_key, api_base, large_model):
     from crawler.adapted_parsing_methods.jiaxing import JiaxingParser
     try:
-        parser = JiaxingParser(url=url, headers={"User-Agent": "Mozilla/5.0"}, keyword=keyword, max_day=max_day)
+        parser = JiaxingParser(url=url, headers={"User-Agent": "Mozilla/5.0"}, keyword=keyword, max_day=max_day,
+                               api_key=api_key, api_base=api_base, large_model=large_model)
         parser.url_type = link_type
         return fetch_data(parser, link_type)
     except Exception as e:
         log.error(f"Error in fetch_jxszwsjb_jiaxing: {e},{traceback.format_exc()}")
         return "text", None
 
-def fetch_ggzyjy_huzhou(url, link_type, keyword, max_day):
+
+def fetch_ggzyjy_huzhou(url, link_type, keyword, max_day, api_key, api_base, large_model):
     from crawler.adapted_parsing_methods.huzhou import HuzhouParser
     try:
-        parser = HuzhouParser(url=url, headers={"User-Agent": "Mozilla/5.0"}, keyword=keyword, max_day=max_day)
+        parser = HuzhouParser(url=url, headers={"User-Agent": "Mozilla/5.0"}, keyword=keyword, max_day=max_day,
+                              api_key=api_key, api_base=api_base, large_model=large_model)
         parser.url_type = link_type
         return fetch_data(parser, link_type)
     except Exception as e:
         log.error(f"Error in fetch_ggzyjy_huzhou: {e}，{traceback.format_exc()}")
         return "text", None
 
-def fetch_zsztb_zhoushan(url, link_type, keyword, max_day):
+
+def fetch_zsztb_zhoushan(url, link_type, keyword, max_day, api_key, api_base, large_model):
      from crawler.adapted_parsing_methods.zhoushan import ZhoushanParser
      try:
-         parser = ZhoushanParser(url=url, headers={"User-Agent": "Mozilla/5.0"}, keyword=keyword, max_day=max_day)
+         parser = ZhoushanParser(url=url, headers={"User-Agent": "Mozilla/5.0"}, keyword=keyword, max_day=max_day,
+                                 api_key=api_key, api_base=api_base, large_model=large_model)
          parser.url_type = link_type
          return fetch_data(parser, link_type)
      except Exception as e:
          log.error(f"Error in fetch_zsztb_zhoushan: {e},{traceback.format_exc()}")
          return "text", None
 
-def fetch_tzztb_zjtz(url, link_type, keyword, max_day):
+
+def fetch_tzztb_zjtz(url, link_type, keyword, max_day, api_key, api_base, large_model):
     from crawler.adapted_parsing_methods.taizhou import TaizhouParser
     try:
-        parser = TaizhouParser(url=url, headers={"User-Agent": "Mozilla/5.0"}, keyword=keyword, max_day=max_day)
+        parser = TaizhouParser(url=url, headers={"User-Agent": "Mozilla/5.0"}, keyword=keyword, max_day=max_day,
+                               api_key=api_key, api_base=api_base, large_model=large_model)
         parser.url_type = link_type
         return fetch_data(parser, link_type)
     except Exception as e:
         log.error(f"Error in fetch_tzztb_zjtz: {e},{traceback.format_exc()}")
         return "text", None
 
-def fetch_lssggzy_lishui(url, link_type, keyword, max_day):
+
+def fetch_lssggzy_lishui(url, link_type, keyword, max_day, api_key, api_base, large_model):
      from crawler.adapted_parsing_methods.lishui import LishuiParser
      try:
-         parser = LishuiParser(url=url, headers={"User-Agent": "Mozilla/5.0"}, keyword=keyword, max_day=max_day)
+         parser = LishuiParser(url=url, headers={"User-Agent": "Mozilla/5.0"}, keyword=keyword, max_day=max_day,
+                               api_key=api_key, api_base=api_base, large_model=large_model)
          parser.url_type = link_type
          return fetch_data(parser, link_type)
      except Exception as e:

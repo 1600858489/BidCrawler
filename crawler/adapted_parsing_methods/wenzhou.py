@@ -1,14 +1,9 @@
-import datetime
-import os
 import re
-from urllib.parse import urlparse, parse_qs
 
-from bs4 import BeautifulSoup
 from html2text import html2text
 
 from core.history_manager import HistoryManager
 from log.logger import Logger
-from .manager import AbstractWebCrawler
 from .qz import QzParser
 
 log = Logger().get_logger()
@@ -65,6 +60,3 @@ class WenzhouParser(QzParser):
             content = ""
         content = html2text(str(content))
         return content
-
-    def save_announcement(self,file_path):
-        pass

@@ -1,12 +1,10 @@
-from urllib.parse import urlparse, parse_qs
 import re
 
 from bs4 import BeautifulSoup
 from html2text import html2text
 
-from core.history_manager import HistoryManager
-from log.logger import Logger
 from .qz import QzParser
+
 
 class LishuiParser(QzParser):
     pass
@@ -48,9 +46,5 @@ class LishuiParser(QzParser):
             content = "test"
         content = html2text(str(content))
         return content
-
-
-    def save_announcement(self,file_path):
-        pass
 
 

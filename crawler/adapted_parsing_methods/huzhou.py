@@ -1,18 +1,14 @@
 import datetime
 import json
-import os
 import random
 import re
 import time
-from urllib.parse import urlparse, parse_qs
 
 import requests
 from html2text import html2text
-from bs4 import BeautifulSoup
 
 from core.history_manager import HistoryManager
 from log.logger import Logger
-from .manager import AbstractWebCrawler
 from .qz import QzParser
 
 log = Logger().get_logger()
@@ -85,8 +81,6 @@ class HuzhouParser(QzParser):
         content = html2text(str(content))
         return content
 
-    def save_announcement(self,file_path):
-        pass
 
 
     def set_file_path(self):

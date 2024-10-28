@@ -1,58 +1,67 @@
-import base64
 import json
 
 from openai import OpenAI
 
-from prompt import *
+try:
+    from .prompt import *
+except:
+    from prompt import *
 
+from log.logger import Logger
+
+log = Logger().get_logger()
 
 class OpenAIChatClient:
-    def __init__(self, api_key=None):
+    def __init__(self, api_key=None, api_base=None):
         """
           初始化 OpenAI API 客户端，可以通过环境变量或者传入 api_key
           """
 
-        self.api_key = api_key or "sk-GZmletEW0sn8Kp7tA33f9a00C4Fd4a3a9848C12080C74c9d"
-        self.api_base = "https://oneapi.sotawork.com/v1"
+        # self.api_key = api_key or "sk-GZmletEW0sn8Kp7tA33f9a00C4Fd4a3a9848C12080C74c9d"
+        # self.api_base = api_base or "https://oneapi.sotawork.com/v1"
 
+        self.api_key = api_key
+        if api_base:
+            self.api_base = api_base
 
         # 初始化 OpenAI 客户端
         self.client = OpenAI(api_key=self.api_key,base_url=self.api_base)
 
-    def image_to_base64(self, image_path):
-        """
-        将图片转换为 Base64 编码
-        """
-        with open(image_path, "rb") as image_file:
-            return base64.b64encode(image_file.read()).decode('utf-8')
-
-
-
-    def get_response(self, prompt, model="gpt-4o-mini", response_format="json"):
+    def get_response(self, prompt, images=[], model="gpt-4o-mini", response_format="json", ) -> dict or None:
         """
           发送 prompt 给 OpenAI，并返回结果（JSON格式）
           """
+        if images is None:
+            images = []
         try:
             # 生成完成的响应
             completion = self.client.chat.completions.create(
                 model=model,
                 messages=[
                     {"role": "system", "content": PROMPT_TEMPLATE},
-                    {"role": "user", "content": prompt}
+                    {"role": "user", "content": [{"type": "text", "text": prompt}] + [
+                        {"type": "image_url", "image_url": {"url": f"data:image/jpeg;base64,{image}"}} for image in
+                        images]}
                 ],
-                stream=False
+                stream=False,
+                response_format={"type": "json_object"}
             )
             # 获取回答内容
+            #     print(completion.choices[0].message.content)
+            # except Exception as e:
+            #     pass
             response_content = completion.choices[0].message.content
+            log.info(f"AI 回复: {response_content}")
             try:
-                response_content = eval(response_content)
-                response_content = json.dumps(response_content, ensure_ascii=False)
+                response_content = json.loads(response_content)
                 return response_content
             except:
-                return None
+                response_content = json.loads(response_content)
+                return response_content
 
         except Exception as e:
             print(f"请求出错: {e}")
+            log.error(f"请求出错: {e}")
             return None
 
     def upload_image(self, image_path):
@@ -110,3 +119,4 @@ if __name__ == "__main__":
 
     if response:
         print("AI 回复:", response)
+        print(type(response))

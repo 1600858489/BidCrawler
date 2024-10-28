@@ -1,6 +1,3 @@
-import os
-
-import pandas as pd
 from html2text import html2text
 
 from config import DEBUG
@@ -30,26 +27,6 @@ class JiaxingParser(QzParser):
         self.response_type = "url_list"
         self.response = res
 
-
-    def save_announcement(self,file_path):
-        table = self.html_content.find('table', border="1")
-
-        data = []
-        header = []
-        for row in table.find_all('tr'):
-            cells = row.find_all('td')
-            header.append(cells[0].text)
-            data.append(cells[1].text)
-        data= [data]
-        df = pd.DataFrame(data, columns=header)
-        output_file = file_path + "/" + "中标结果公告.csv"
-        if os.path.exists(output_file):
-            df.to_csv(output_file, mode='a', header=False, index=False)
-        else:
-            df.to_csv(output_file, index=False,encoding='utf-8-sig')
-
-        log.info("Saved announcement to file: " + output_file)
-        return True
 
 
     def get_file_info(self):

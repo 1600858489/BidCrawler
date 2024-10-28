@@ -1,21 +1,24 @@
 import datetime
-import os
 import re
 from urllib.parse import urlparse, parse_qs
 
+import html2text
 import pandas as pd
 from bs4 import BeautifulSoup
-import html2text
 from tqdm import tqdm
 
+from config import *
+from core.bot.chatgpt.chatgpt import OpenAIChatClient
+from core.file_read.pdf import read_pdf
+from core.file_read.word import read_and_convert_doc
 from core.history_manager import HistoryManager
 from log.logger import Logger
 from .manager import AbstractWebCrawler
-from config import *
 
 log = Logger().get_logger()
 
 history_manager = HistoryManager()
+
 
 class QzParser(AbstractWebCrawler):
     """
@@ -24,11 +27,16 @@ class QzParser(AbstractWebCrawler):
     """
     PAGE_ID = "7872499"
     def __init__(self, url, headers=None, params=None, proxies=None, data=None, method="GET", max_page=None,
-                 keyword=None,max_day=None):
+                 keyword=None, max_day=None, api_key=None, api_base=None, large_model=False):
         super().__init__(url, headers, params, proxies, data, method, max_page, keyword,max_day)
         self.scheme = None
         self.domain = None
         self.target_name = None
+        self.api_key = api_key
+        self.api_base = api_base
+        self.large_model = large_model
+
+        print(self.large_model)
 
 
     def fetch(self):
@@ -150,34 +158,50 @@ class QzParser(AbstractWebCrawler):
 
         return html2text.html2text(str(content_div))
 
+    def save_announcement(self, content: str, images: list) -> bool:
+        if not self.large_model:
+            return False
+        log.info(f"save announcement: {content}")
+        if images:
+            content += "\n\n" + "请借助该文本于图片提取出我需要的信息"
 
-    def save_announcement(self,file_path):
-        file_path = CSV_PATH
-        table =  self.html_content.find('table', style="font-size:18px; font-family:'宋体'; line-height:2")
-
-# 存储提取的数据
-        data = []
-        # 遍历表格的行
-        for row in table.find_all('tr'):  # 从第三行开始提取数据（跳过表头）
-            cols = row.find_all('td')
-            if len(cols) == 6:  # 确保行中有足够的列
-                # 提取每一列的数据并去掉前后空白
-                data.append([col.get_text(strip=True) for col in cols])
-
-        data = data[1:]  # 去掉表头
-        # 将数据转换为 DataFrame，并设置列名
-        columns = ['标段（包）编号', '标段（包）名称', '中标单位', '项目经理', '中标价格', '工期（天）']
-        df = pd.DataFrame(data, columns=columns)
-        output_file = file_path + "/中标结果公告.csv"
-        if os.path.exists(output_file):
-            df.to_csv(output_file, mode='a', index=False, header=False, encoding='utf-8-sig')  # 追加数据，不写表头
+        json_data = OpenAIChatClient(api_key=self.api_key, api_base=self.api_base).get_response(content, images)
+        if not json_data:
+            log.error("OpenAI Chat Client 调用失败")
+            return False
+        columns = ['标段（包）编号', '标段（包）名称', '中标单位', '项目经理', '中标价格', '工期（天）', '其他信息']
+        df = pd.DataFrame([[
+            json_data.get("section_id"),
+            json_data.get("section_name"),
+            json_data.get("winning_company"),
+            json_data.get("project_manager"),
+            json_data.get("winning_price"),
+            json_data.get("duration_days"),
+            json_data.get("other")
+        ]], columns=columns)
+        log.info(f"save announcement to csv: {CSV_PATH}")
+        if not os.path.exists(CSV_PATH):
+            df.to_csv(CSV_PATH, mode='w', header=True, index=False)
         else:
-            df.to_csv(output_file, index=False, encoding='utf-8-sig')  # 如果文件不存在，写入表头
+            df.to_csv(CSV_PATH, mode='a', header=False, index=False)
         return True
-
 
     def get_file_info(self):
         return self.html_content.select('#fileDownd a')
+
+    def get_file_content(self, file_path):
+        text = ""
+        base_images = []
+        if "pdf" in file_path:
+            base_images = read_pdf(file_path)
+        elif "docx" or "doc" in file_path:
+            text = read_and_convert_doc(file_path)
+
+        return text, base_images
+
+
+
+
 
 
     def parse_detail_page(self):
@@ -190,9 +214,7 @@ class QzParser(AbstractWebCrawler):
         if not os.path.exists(one_file_path):
             os.makedirs(one_file_path)
 
-        if "中标结果公告" in  one_file_path:
-            self.save_announcement()
-
+        file_save_path = []
         while file_info:
             file = file_info.pop(0)
             print(file)
@@ -205,8 +227,14 @@ class QzParser(AbstractWebCrawler):
             file_path = one_file_path + "/" + file_name
             log.info(f"downloading file: {file_name}")
             if self.file_download(file_url, file_path):
+                file_save_path.append(file_path)
                 continue
 
+        if "中标结果公告" in one_file_path:
+            for file_path in file_save_path:
+                if ("pdf" or "docx" or "doc" in file_path) and ("中标" or "结果" or "公告" in file_path):
+                    text, image = self.get_file_content(file_path)
+                    self.save_announcement(content, image)
 
         with open(one_file_path + "/" + title + ".md", 'w', encoding='utf-8') as f:
             f.write(content)

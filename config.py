@@ -11,6 +11,10 @@ def set_directory(directory):
 VERSION = "v1.1.1"
 LOG_PATH = set_directory('logs')
 FILE_PATH = set_directory("downloads")
+
+BASE_DIR = os.getcwd()
+
+
 PLATFORM_HASH = {
     "ggzy.qz.gov.cn": "衢州",
     "ggzyjy.jinhua.gov.cn": "金华",
@@ -24,6 +28,7 @@ PLATFORM_HASH = {
 }
 
 CSV_PATH = os.path.join(FILE_PATH, "中标结果.csv")
+CONFIG_PATH = os.path.join(os.getcwd(), "config.json")
 
 DEBUG = True
 

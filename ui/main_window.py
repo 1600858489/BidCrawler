@@ -1,4 +1,5 @@
 import random
+import random
 import sys
 import time
 from urllib.parse import urlparse
@@ -13,6 +14,7 @@ from crawler.crawler import WebCrawler  # 查询工具模块
 from log.logger import Logger
 
 log = Logger().get_logger()
+
 
 
 class CrawlerThread(QThread):
@@ -82,7 +84,8 @@ class CrawlerThread(QThread):
 
             if strategy:
                 print(f"开始查询 {link}...{self.key_words}")
-                resulta = strategy(link, link_type,self.key_words,self.max_day)
+                resulta = strategy(link, link_type, self.key_words, self.max_day, self.api_key, self.api_base,
+                                   self.large_model)
 
                 if resulta is None:
                     break
@@ -158,8 +161,10 @@ class CrawlerThread(QThread):
 
 
 class WebCrawlerApp(QWidget):
+
     def __init__(self):
         super().__init__()
+        self.config = CrawlStrategyManager.load_config()
         self.queue = []  # 待查询队列
         self.initUI()
         self.crawler = WebCrawler()
@@ -169,30 +174,64 @@ class WebCrawlerApp(QWidget):
         self.crawler_thread = None
         self.strategy_manager = CrawlStrategyManager()
 
+        self.api_key_input.setText(self.config.get('api_key', ''))  # 设置API Key输入框
+        self.api_base_input.setText(self.config.get('api_base', ''))  # 设置API Base输入框
+
     def initUI(self):
-
-        self.__version__ =  VERSION
-        # 主布局
+        self.__version__ = VERSION
         self.setWindowTitle(f'查询工具软件-{self.__version__}')
-
         self.setGeometry(100, 100, 1400, 1000)
         layout = QGridLayout()
 
+        # 创建一个主布局，使用水平盒子布局（左右分块）
+        main_layout = QHBoxLayout()
+        left_layout = QVBoxLayout()  # 左侧布局
+        right_layout = QVBoxLayout()  # 右侧布局
 
-
-
-
-
-        # 输入区域布局
-        input_layout = QVBoxLayout()
-
-        # 输入 URL 区域
-        url_layout = QHBoxLayout()
+        # 输入区域 - 左侧布局
+        # URL 输入
         self.url_input = QLineEdit()
         self.url_input.setPlaceholderText('请输入要查询的 URL')
-        url_layout.addWidget(self.url_input)
+        left_layout.addWidget(self.url_input)
 
-        # 网站选择下拉框
+        # 关键字输入
+        self.keyword_input = QLineEdit()
+        self.keyword_input.setPlaceholderText('请输入要查询的关键字')
+        left_layout.addWidget(self.keyword_input)
+
+        # API Key 输入
+        self.api_key_input = QLineEdit()
+        self.api_key_input.setPlaceholderText('请输入 API Key')
+        left_layout.addWidget(self.api_key_input)
+
+        # API Base 输入
+        self.api_base_input = QLineEdit()
+        self.api_base_input.setPlaceholderText('请输入 API Base URL')
+        left_layout.addWidget(self.api_base_input)
+
+        # 是否启用大模型选择框
+        self.large_model_checkbox = QComboBox()
+        self.large_model_checkbox.addItems(['启用大模型', '不启用大模型'])
+        left_layout.addWidget(self.large_model_checkbox)
+
+        # 是否启用延迟选择框
+        self.enable_delay_checkbox = QComboBox()
+        self.enable_delay_checkbox.addItems(['启用延迟', '不启用延迟'])
+        left_layout.addWidget(self.enable_delay_checkbox)
+
+        # 创建查询目标日期的输入区域
+        date_range_layout = QHBoxLayout()
+        self.target_days_input = QSpinBox()
+        self.target_days_input.setRange(1, 9999)
+        self.target_days_input.setValue(7)
+        date_range_label = QLabel('需要查询')
+        date_range_layout.addWidget(date_range_label)
+        date_range_layout.addWidget(self.target_days_input)
+        date_range_label = QLabel('天内的信息')
+        date_range_layout.addWidget(date_range_label)
+        left_layout.addLayout(date_range_layout)
+
+        # 网站选择下拉框 - 右侧布局
         self.website_combo = QComboBox()
         self.website_combo.addItems([
             PLATFORM_HASH["ggzy.qz.gov.cn"],
@@ -205,55 +244,15 @@ class WebCrawlerApp(QWidget):
             PLATFORM_HASH["ggzy.tzztb.zjtz.gov.cn"],
             PLATFORM_HASH["lssggzy.lishui.gov.cn"]
         ])
-        url_layout.addWidget(self.website_combo)
+        self.website_combo.setFixedWidth(250)
+        right_layout.addWidget(self.website_combo)
 
-        input_layout.addLayout(url_layout)
+        # 将左右布局加入主布局
+        main_layout.addLayout(left_layout)
+        main_layout.addLayout(right_layout)
 
-        # 输入关键字区域
-        keyword_layout = QHBoxLayout()
-        self.keyword_input = QLineEdit()
-        self.keyword_input.setPlaceholderText('请输入要查询的关键字')
-        keyword_layout.addWidget(self.keyword_input)
-        input_layout.addLayout(keyword_layout)
-
-        # 输入 API Key 区域
-        api_key_layout = QHBoxLayout()
-        self.api_key_input = QLineEdit()
-        self.api_key_input.setPlaceholderText('请输入 API Key')
-        api_key_layout.addWidget(self.api_key_input)
-        input_layout.addLayout(api_key_layout)
-
-        # 输入 API Base 区域
-        api_base_layout = QHBoxLayout()
-        self.api_base_input = QLineEdit()
-        self.api_base_input.setPlaceholderText('请输入 API Base URL')
-        api_base_layout.addWidget(self.api_base_input)
-        input_layout.addLayout(api_base_layout)
-
-        # 是否启用大模型选择框
-        self.large_model_checkbox = QComboBox()
-        self.large_model_checkbox.addItems(['启用大模型', '不启用大模型'])
-        input_layout.addWidget(self.large_model_checkbox)
-
-        # 是否启用延迟选择框
-        self.enable_delay_checkbox = QComboBox()
-        self.enable_delay_checkbox.addItems(['启用延迟', '不启用延迟'])
-        input_layout.addWidget(self.enable_delay_checkbox)
-
-        # 创建查询目标日期的输入区域
-        date_range_layout = QHBoxLayout()
-        self.target_days_input = QSpinBox()  # 使用 QSpinBox 让用户输入天数
-        self.target_days_input.setRange(1, 9999)  # 设置可输入的范围，1到365天
-        self.target_days_input.setValue(7)  # 设置默认值为1
-        date_range_label = QLabel('需要查询')
-        date_range_layout.addWidget(date_range_label)  # 标签提示
-        date_range_layout.addWidget(self.target_days_input)  # 天数输入框
-        date_range_label = QLabel('天内的信息')
-        date_range_layout.addWidget(date_range_label)  # 标签提示
-        input_layout.addLayout(date_range_layout)
-
-        # 添加输入区域布局到主布局
-        layout.addLayout(input_layout, 0, 0, 1, 2)  # 将输入区域放在顶部
+        # 将主布局设置为窗口的布局
+        layout.addLayout(main_layout, 0, 0, 1, 2)
 
         # 操作按钮区域
         button_layout = QHBoxLayout()
@@ -314,14 +313,18 @@ class WebCrawlerApp(QWidget):
         max_day = self.target_days_input.value()
         api_key = self.api_key_input.text().strip()
         api_base = self.api_base_input.text().strip()
-        large_model = self.large_model_checkbox.currentText() == True
-        enable_delay = self.enable_delay_checkbox.currentText() == True
+        large_model = self.large_model_checkbox.currentText() == "启用大模型"
+        enable_delay = self.enable_delay_checkbox.currentText() == "启用延迟"
+
+        self.config['api_key'] = api_key
+        self.config['api_base'] = api_base
+        CrawlStrategyManager.save_config(self.config)
+
 
         for k, v in PLATFORM_HASH.items():
             if v == domain:
                 domain = k
                 break
-        print(url, domain, keyword, max_day)
 
         if not url and not domain:
             self.log_display.setText("请输入有效的查询目标 。")
@@ -348,11 +351,6 @@ class WebCrawlerApp(QWidget):
 
         # 获取页面内容
         for i in url:
-            # print(i)
-            # status, html = self.crawler.fetch(i, "html")
-            # if not html:
-            #     self.log_display.setText("获取页面内容失败。")
-            #     return
 
             # 提取所有链接
             links = [(1, i, "html")]
