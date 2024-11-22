@@ -245,6 +245,13 @@ class WebCrawlerApp(QWidget):
             PLATFORM_HASH["lssggzy.lishui.gov.cn"]
         ])
         self.website_combo.setFixedWidth(250)
+        self.website_combo.setStyleSheet("""
+            QComboBox QAbstractItemView {
+                spacing: 10px;  /* 调整每个选项的垂直间距 */
+                padding: 5px;  /* 调整每个选项的内边距 */
+            }
+        """)
+
         right_layout.addWidget(self.website_combo)
 
         # 将左右布局加入主布局
@@ -315,6 +322,13 @@ class WebCrawlerApp(QWidget):
         api_base = self.api_base_input.text().strip()
         large_model = self.large_model_checkbox.currentText() == "启用大模型"
         enable_delay = self.enable_delay_checkbox.currentText() == "启用延迟"
+
+        if large_model:
+            if not api_key or not api_base:
+                QMessageBox.warning(self, "警告", "启用大模型时，请填写 API Key ")
+                return
+
+        print(large_model)
 
         self.config['api_key'] = api_key
         self.config['api_base'] = api_base

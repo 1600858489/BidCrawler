@@ -161,7 +161,7 @@ class QzParser(AbstractWebCrawler):
     def save_announcement(self, content: str, images: list) -> bool:
         if not self.large_model:
             return False
-        log.info(f"save announcement: {content}")
+        log.info(f"save announcement: {len(content)}")
         if images:
             content += "\n\n" + "请借助该文本于图片提取出我需要的信息"
 
@@ -230,11 +230,12 @@ class QzParser(AbstractWebCrawler):
                 file_save_path.append(file_path)
                 continue
 
-        if "中标结果公告" in one_file_path:
+        if "中标结果公告" or "中标公告" in one_file_path:
             for file_path in file_save_path:
                 if ("pdf" or "docx" or "doc" in file_path) and ("中标" or "结果" or "公告" in file_path):
                     text, image = self.get_file_content(file_path)
                     self.save_announcement(content, image)
+            self.save_announcement(content, [])
 
         with open(one_file_path + "/" + title + ".md", 'w', encoding='utf-8') as f:
             f.write(content)

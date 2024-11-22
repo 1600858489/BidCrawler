@@ -14,7 +14,7 @@ def read_pdf(pdf_path) -> list[str]:
     提取 PDF 中的文字和图片，图片进行 Base64 编码
     """
     base64_images = []
-    poppler_path = os.path.join(BASE_DIR, 'poppler-24.08.0/Library/bin')
+    poppler_path = os.path.join(BASE_DIR, 'poppler/Library/bin')
     # 打开 PDF 文件并提取文字
 
     # 将 PDF 页面转换为图像

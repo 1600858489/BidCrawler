@@ -23,7 +23,7 @@ PLATFORM_HASH = {
     "jxszwsjb.jiaxing.gov.cn": "嘉兴",
     "ggzyjy.huzhou.gov.cn": "湖州",
     "zsztb.zhoushan.gov.cn": "舟山",
-    "ggzy.tzztb.zjtz.gov.cn": "浙江",
+    "ggzy.tzztb.zjtz.gov.cn": "台州",
     "lssggzy.lishui.gov.cn": "丽水"
 }
 

@@ -1,6 +1,8 @@
-
+import re
 from urllib.parse import urlparse, parse_qs
 
+import html2text
+from bs4 import BeautifulSoup
 
 from core.history_manager import HistoryManager
 from log.logger import Logger
@@ -39,3 +41,9 @@ class JinhuaParser(QzParser):
         self.response_type = 'url_list'
         self.response = ground_table_urls
 
+    def get_content(self):
+        content_div = self.html_content.select_one('div.content')
+        if not content_div:
+            content_div = ""
+
+        return html2text.html2text(str(content_div))
