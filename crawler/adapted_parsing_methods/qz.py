@@ -12,6 +12,7 @@ from core.bot.chatgpt.chatgpt import OpenAIChatClient
 from core.file_read.pdf import read_pdf
 from core.file_read.word import read_and_convert_doc
 from core.history_manager import HistoryManager
+
 from log.logger import Logger
 from .manager import AbstractWebCrawler
 
@@ -54,9 +55,13 @@ class QzParser(AbstractWebCrawler):
                 log.error(f"response status code: {response.status_code}")
                 log.error(f"response content: {response.content}")
                 self.html_content = None
+                self.error_msg = f"Fetch failed for {self.url}, response status code: {response.status_code}, response content: {response.content}"
         except Exception as e:
             log.error(f"Fetch failed for {self.url}")
             log.error(f"Error: {e}")
+            self.html_content = None
+            print()
+            self.error_msg = f"Fetch failed for {self.url}, error: {e}"
 
         try:
             log.info(f"self.session history: {self.session.history[-1].url}")
@@ -121,6 +126,7 @@ class QzParser(AbstractWebCrawler):
             record_soup = BeautifulSoup(record_content, 'html.parser')
 
             # 提取每个记录的链接和标题
+            # link_tag = record_soup.find('as')
             link_tag = record_soup.find('a')
             if link_tag:
                 link = link_tag['href']
@@ -141,9 +147,9 @@ class QzParser(AbstractWebCrawler):
             data_list.append((1, next_page_url, "table"))
 
 
-        if data_list:
-            self.response_type = "url_list"
-            self.response = data_list
+
+        self.response_type = "url_list"
+        self.response = data_list
 
 
     def set_file_path(self):
@@ -154,7 +160,7 @@ class QzParser(AbstractWebCrawler):
     def get_content(self):
         content_div = self.html_content.select_one('div.ewb-detail-content.ewb-mt20 > div')
         if not content_div:
-            content_div = ""
+            content_div = "no text data"
 
         return html2text.html2text(str(content_div))
 
@@ -201,16 +207,14 @@ class QzParser(AbstractWebCrawler):
 
 
 
-
-
-
     def parse_detail_page(self):
 
         title = self.html_content.find('title').text.strip().replace("/", "")
         content = self.get_content()
         file_info = self.get_file_info()
         is_file = True if file_info else False
-        one_file_path = self.file_path + "/" + self.domain  + self.set_file_path() + "/" + title
+        one_file_path = self.file_path + "/" + PLATFORM_HASH.get(self.domain, self.domain) + self.set_file_path() + "/" + title
+        print(one_file_path,self.domain)
         if not os.path.exists(one_file_path):
             os.makedirs(one_file_path)
 
@@ -229,13 +233,13 @@ class QzParser(AbstractWebCrawler):
             if self.file_download(file_url, file_path):
                 file_save_path.append(file_path)
                 continue
-
-        if "中标结果公告" or "中标公告" in one_file_path:
-            for file_path in file_save_path:
-                if ("pdf" or "docx" or "doc" in file_path) and ("中标" or "结果" or "公告" in file_path):
-                    text, image = self.get_file_content(file_path)
-                    self.save_announcement(content, image)
-            self.save_announcement(content, [])
+        if self.large_model or True:
+            if "中标结果公告" or "中标公告" in one_file_path:
+                for file_path in file_save_path:
+                    if ("pdf" or "docx" or "doc" in file_path) and ("中标" or "结果" or "公告" in file_path):
+                        text, image = self.get_file_content(file_path)
+                        self.save_announcement(content, image)
+                self.save_announcement(content, [])
 
         with open(one_file_path + "/" + title + ".md", 'w', encoding='utf-8') as f:
             f.write(content)
@@ -255,8 +259,8 @@ class QzParser(AbstractWebCrawler):
     def parse(self):
 
         if self.html_content is None:
-            self.response_type = "url_list"
-            self.response = []
+            self.response_type = "error"
+            self.response = self.error_msg
         elif self.html_content is not None:
             self.domain = urlparse(self.url).netloc
             self.scheme = urlparse(self.url).scheme

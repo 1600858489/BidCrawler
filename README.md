@@ -97,3 +97,14 @@ pyinstaller --onefile --windowed --distpath "./BIdCrawler" --workpath "./BIdCraw
 ## 许可证
 
 MIT License
+
+
+
+# 待优化项
+
+ -[x] 保存结果域名映射中文
+ -[ ] 中标公告包含评审专家以及定标结果公示中的单位（杭州）
+ -[ ] 预中标公告，【候选人（一个单元格内）】
+ -[x] 错误信息添加message字段，用于记录错误信息
+ -[x] 停止时弹出提示框，提示需要完成当前信息
+ -[x] 右下角出现进度

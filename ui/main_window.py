@@ -23,6 +23,7 @@ class CrawlerThread(QThread):
     update_failed = pyqtSignal(str)
     update_queue = pyqtSignal(list)
     new_queue = pyqtSignal(list)
+    finished = pyqtSignal()
 
     def __init__(self, queue, crawler, strategy_manager, key_words, max_day, api_key, api_base, large_model,
                  enable_delay):
@@ -90,17 +91,25 @@ class CrawlerThread(QThread):
                 if resulta is None:
                     break
                 parsed_type, parsed_data = resulta
-                if not parsed_data:
-                    # self.update_completed.emit(f"成功: {link}，但没有找到有效数据。尚未记录入历史记录")
-                    if parsed_type != "url_list":
-                        self.update_failed.emit(f"{link}  查询出现异常，请查看日志。 该条记录尚未记录入历史记录。")
-                        log.info(f"session {link} has no valid data")
-                    else:
-                        self.update_completed.emit(f"成功: {link}，但没有找到有效链接。 请检查条件范围内是否有可寻找数据，以及历史记录是否存在")
+                # if not parsed_data or parsed_type == "error":
+                #     # self.update_completed.emit(f"成功: {link}，但没有找到有效数据。尚未记录入历史记录")
+                #     if parsed_type == "error":
+                #         print(parsed_data)
+                #         self.update_failed.emit(parsed_data)
+                #         log.info(parsed_data)
+                #
+                #     if parsed_type != "url_list":
+                #         self.update_failed.emit(f"{link}  查询出现异常，请查看日志。 该条记录尚未记录入历史记录。")
+                #         log.info(f"session {link} has no valid data")
+                #     else:
+                #         self.update_completed.emit(f"成功: {link}，但没有找到有效链接。 请检查条件范围内是否有可寻找数据，以及历史记录是否存在")
 
+                if parsed_type == "error":
+                    log.error(parsed_data)
+                    self.update_failed.emit(parsed_data)
                 elif parsed_type == "url_list":
                     if not parsed_data:
-                        self.update_completed.emit(f"成功: {link}，但没有找到有效链接。 请检查条件范围内是否有可寻找数据，以及历史记录是否存在")
+                        self.update_failed.emit(f"警告: 成功解析 {link}，但没有找到有效链接。 请检查条件范围内是否有可寻找数据，以及历史记录是否存在")
                         log.info(f"session {link} has no valid data")
 
                     self.new_queue.emit(parsed_data)
@@ -147,6 +156,7 @@ class CrawlerThread(QThread):
             time_display = f"{days}天 {hours}小时 {minutes}分钟 {seconds:.2f}秒"
 
         self.update_log.emit(f"查询完成，共查询 {search_num} 个链接，用时 {time_display}。")
+        self.finished.emit()
 
 
 
@@ -166,6 +176,8 @@ class WebCrawlerApp(QWidget):
         super().__init__()
         self.config = CrawlStrategyManager.load_config()
         self.queue = []  # 待查询队列
+        self.history_num = 0
+        self.all_queue = 0
         self.initUI()
         self.crawler = WebCrawler()
         self.history_manager = HistoryManager()
@@ -277,11 +289,13 @@ class WebCrawlerApp(QWidget):
         # 停止按钮
         self.stop_button = QPushButton('停止')
         self.stop_button.clicked.connect(self.stop_crawling)
+        self.stop_button.setEnabled(False)
         button_layout.addWidget(self.stop_button)
 
         # 暂停按钮
         self.pause_button = QPushButton('暂停')
         self.pause_button.clicked.connect(self.pause_crawling)
+        self.pause_button.setEnabled(False)
         button_layout.addWidget(self.pause_button)
 
         # 将按钮区域添加到主布局
@@ -311,9 +325,13 @@ class WebCrawlerApp(QWidget):
         layout.addWidget(self.completed_list, 3, 1)  # 已经查询任务占据右下
         layout.addWidget(self.failed_list, 4, 0, 1, 2)  # 失败任务占据最底部
 
+        self.progress_label = QLabel("进度： 0/ 0", self)
+        layout.addWidget(self.progress_label, 5, 0, 1, 2)  # 进度显示占据下半部分
+
         self.setLayout(layout)
 
     def start_crawling(self):
+
         url = self.url_input.text().strip()
         domain = self.website_combo.currentText()
         keyword = self.keyword_input.text().strip()
@@ -386,7 +404,19 @@ class WebCrawlerApp(QWidget):
         self.crawler_thread.update_failed.connect(self.update_failed_list)
         self.crawler_thread.update_queue.connect(self.update_queue_list)
         self.crawler_thread.new_queue.connect(self.add_queue_list)
+        self.crawler_thread.finished.connect(self.update_button_state)
         self.crawler_thread.start()
+        self.update_button_state()
+
+    def update_button_state(self):
+        if self.crawler_thread and self.crawler_thread.isRunning():
+            self.start_button.setEnabled(False)
+            self.pause_button.setEnabled(True)
+            self.stop_button.setEnabled(True)
+        else:
+            self.start_button.setEnabled(True)
+            self.pause_button.setEnabled(False)
+            self.stop_button.setEnabled(False)
 
     def update_log_display(self, message):
         """
@@ -427,10 +457,14 @@ class WebCrawlerApp(QWidget):
         for row in range(row_count - 1, 0, -1):
             self.queue_list.removeRow(row)
         for link in queue:
+
             new_row_index = self.queue_list.rowCount() - 1
             self.queue_list.insertRow(new_row_index)
             self.queue_list.setItem(new_row_index, 0, QTableWidgetItem(link[1]))
             self.queue_list.setItem(new_row_index, 1, QTableWidgetItem(link[2]))
+        self.history_num += 1
+        self.update_progress_label()
+
 
     def open_current_folder(self):
         # 打开当前脚本所在的文件夹
@@ -444,8 +478,20 @@ class WebCrawlerApp(QWidget):
                 self.queue.append(link)
             elif link in self.queue_list:
                 pass
+        self.all_queue += len(new_queue_list)
+        self.update_progress_label()
+
+    def update_progress_label(self):
+        """
+        更新进度显示
+        :param progress:
+        :param total:
+        :return:
+        """
+        self.progress_label.setText(f"进度： {self.history_num} / {self.all_queue}")
 
     def stop_crawling(self):
+        QMessageBox.information(self, "提示", "正在等待当前链接结束，查询完成停止。", QMessageBox.Ok)
         if self.crawler_thread and self.crawler_thread.isRunning():
             self.crawler_thread.stop()
             self.crawler_thread.wait()  # 等待线程安全结束
@@ -457,6 +503,8 @@ class WebCrawlerApp(QWidget):
             for row in range(row_count - 1, 0, -1):
                 self.queue_list.removeRow(row)
             self.log_display.append("查询工具线程已停止。")
+            self.update_button_state()  # 更新按钮状态
+        self.history_num += 1
 
     def pause_crawling(self):
         if self.crawler_thread and self.crawler_thread.isRunning():

@@ -1,6 +1,7 @@
 import json
 import traceback
 from abc import ABC, abstractmethod
+from http.client import responses
 
 import requests
 
@@ -57,6 +58,8 @@ def fetch_data(parser, link_type):
         return "url_list", parser.response
     elif parser.response_type in ["html", "json"]:
         return parser.response_type, parser.html_content if parser.response_type == "html" else parser.response
+    elif parser.response_type == "error":
+        return "error", parser.response
     else:
         return "text", parser.response
 
@@ -192,23 +195,13 @@ class AbstractWebCrawler(ABC):
         self.method = method.upper()
         self.html_content = None
         self.session = requests.Session()
-        # 数据类型
-        """
-        text: 纯文本数据
-        table: 表格数据
-        detail_page: 详情页数据
-        url_list: 网页中包含的 URL 列表
-        json: JSON 数据
-        binary: 二进制数据
-        file: 文件下载
-        control: 控制信息
-        """
         self.response_type = ""
         self.response = None
         self.file_path = FILE_PATH
         self.max_page = max_page or 1
         self.keyword = keyword or ""
         self.max_day = max_day or 30
+        self.error_msg = ""
 
 
     @abstractmethod

@@ -19,7 +19,9 @@ class OpenAIChatClient:
 
         # self.api_key = api_key or "sk-GZmletEW0sn8Kp7tA33f9a00C4Fd4a3a9848C12080C74c9d"
         # self.api_base = api_base or "https://oneapi.sotawork.com/v1"
+        if not api_key:
 
+            raise ValueError("请设置环境变量 OPENAI_API_KEY 或传入 api_key 参数")
         self.api_key = api_key
         if api_base:
             self.api_base = api_base

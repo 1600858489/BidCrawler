@@ -14,6 +14,8 @@ from log.logger import Logger
 from .manager import AbstractWebCrawler
 from .qz import QzParser
 
+from config import *
+
 log = Logger().get_logger()
 
 history_manager = HistoryManager()
@@ -233,7 +235,8 @@ class HangzhouParser(QzParser):
         content = self.get_content()
         file_info = self.get_file_info()
         is_file =  True if file_info else False
-        one_file_path = self.file_path + "/" + self.domain  + self.set_file_path() + "/" + title
+        print(self.domain,PLATFORM_HASH.get(self.domain, self.domain))
+        one_file_path = self.file_path + "/" + PLATFORM_HASH.get(self.domain, self.domain)  + self.set_file_path() + "/" + title
         if not os.path.exists(one_file_path):
             os.makedirs(one_file_path)
 

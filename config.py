@@ -27,6 +27,7 @@ PLATFORM_HASH = {
     "lssggzy.lishui.gov.cn": "丽水"
 }
 
+
 CSV_PATH = os.path.join(FILE_PATH, "中标结果.csv")
 CONFIG_PATH = os.path.join(os.getcwd(), "config.json")
 
