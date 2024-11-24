@@ -12,7 +12,6 @@ from core.bot.chatgpt.chatgpt import OpenAIChatClient
 from core.file_read.pdf import read_pdf
 from core.file_read.word import read_and_convert_doc
 from core.history_manager import HistoryManager
-
 from log.logger import Logger
 from .manager import AbstractWebCrawler
 
@@ -26,7 +25,7 @@ class QzParser(AbstractWebCrawler):
     This class is used to parse the Qz.com website.
     url: http://ggzy.qz.gov.cn/
     """
-    PAGE_ID = "7872499"
+
     def __init__(self, url, headers=None, params=None, proxies=None, data=None, method="GET", max_page=None,
                  keyword=None, max_day=None, api_key=None, api_base=None, large_model=False):
         super().__init__(url, headers, params, proxies, data, method, max_page, keyword,max_day)
@@ -164,14 +163,15 @@ class QzParser(AbstractWebCrawler):
 
         return html2text.html2text(str(content_div))
 
-    def save_announcement(self, content: str, images: list) -> bool:
+    def save_announcement(self, content: str, images: list, template=None) -> bool:
         if not self.large_model:
             return False
         log.info(f"save announcement: {len(content)}")
         if images:
-            content += "\n\n" + "请借助该文本于图片提取出我需要的信息"
+            content += "\n\n" + "## 请借助该文本与图片提取出我需要的信息"
 
-        json_data = OpenAIChatClient(api_key=self.api_key, api_base=self.api_base).get_response(content, images)
+        json_data = OpenAIChatClient(api_key=self.api_key, api_base=self.api_base).get_response(content, images,
+                                                                                                template)
         if not json_data:
             log.error("OpenAI Chat Client 调用失败")
             return False
@@ -185,12 +185,43 @@ class QzParser(AbstractWebCrawler):
             json_data.get("duration_days"),
             json_data.get("other")
         ]], columns=columns)
-        log.info(f"save announcement to csv: {CSV_PATH}")
-        if not os.path.exists(CSV_PATH):
-            df.to_csv(CSV_PATH, mode='w', header=True, index=False)
+        log.info(f"save announcement to csv: {ANNOUNCEMENT_PATH}")
+        if not os.path.exists(ANNOUNCEMENT_PATH):
+            df.to_csv(ANNOUNCEMENT_PATH, mode='w', header=True, index=False)
         else:
-            df.to_csv(CSV_PATH, mode='a', header=False, index=False)
+            df.to_csv(ANNOUNCEMENT_PATH, mode='a', header=False, index=False)
         return True
+
+    def save_pre_announcement(self, content: str, images: list, template=None) -> bool:
+        if not self.large_model:
+            return False
+        log.info(f"save pre announcement")
+
+        if images:
+            content += "\n\n" + "## 请借助该文本与图片提取出我需要的信息"
+
+        json_data = OpenAIChatClient(api_key=self.api_key, api_base=self.api_base).get_response(content, images,
+                                                                                                template)
+        if not json_data:
+            log.error("OpenAI Chat Client 调用失败")
+            return False
+        columns = ['标段（包）编号', '标段（包）名称', '预中标单位', '项目经理', '预中标价格', '工期（天）', '评分']
+        df = pd.DataFrame([[
+            json_data.get("section_id"),
+            json_data.get("section_name"),
+            json_data.get("pre_winning_company"),
+            json_data.get("project_manager"),
+            json_data.get("pre_winning_price"),
+            json_data.get("duration_days"),
+            json_data.get("score")
+        ]], columns=columns)
+        log.info(f"save pre announcement to csv: {PRE_ANNOUNCEMENT_PATH}")
+        if not os.path.exists(PRE_ANNOUNCEMENT_PATH):
+            df.to_csv(PRE_ANNOUNCEMENT_PATH, mode='w', header=True, index=False)
+        else:
+            df.to_csv(PRE_ANNOUNCEMENT_PATH, mode='a', header=False, index=False)
+        return True
+
 
     def get_file_info(self):
         return self.html_content.select('#fileDownd a')
@@ -199,17 +230,35 @@ class QzParser(AbstractWebCrawler):
         text = ""
         base_images = []
         if "pdf" in file_path:
-            base_images = read_pdf(file_path)
+            text, base_images = read_pdf(file_path)
         elif "docx" or "doc" in file_path:
             text = read_and_convert_doc(file_path)
 
         return text, base_images
 
+    def get_title(self):
+        return self.html_content.find('title').text.strip().replace("/", "")
+
+    def is_process_announcement(self, content: str) -> bool:
+        keyword = ["中标结果公告", "中标公告"]
+
+        return any(key in content for key in keyword)
+
+    def is_process_pre_announcement(self, content: str) -> bool:
+        keyword = ["预中标公告"]
+        return any(key in content for key in keyword)
+
+    def get_file_description(self, file_info):
+        file_url = file_info['href']
+        file_name = file_info.text.strip()
+
+        return file_url, file_name
+
 
 
     def parse_detail_page(self):
 
-        title = self.html_content.find('title').text.strip().replace("/", "")
+        title = self.get_title()
         content = self.get_content()
         file_info = self.get_file_info()
         is_file = True if file_info else False
@@ -221,9 +270,7 @@ class QzParser(AbstractWebCrawler):
         file_save_path = []
         while file_info:
             file = file_info.pop(0)
-            print(file)
-            file_url = file['href']
-            file_name = file.text.strip()
+            file_url, file_name = self.get_file_description(file)
             num = 0
             while os.path.exists(one_file_path + "/" + file_name):
                 file_name = file_name.split('.')[0] + f"({num})" + "." + file_name.split('.')[1]
@@ -234,12 +281,15 @@ class QzParser(AbstractWebCrawler):
                 file_save_path.append(file_path)
                 continue
         if self.large_model or True:
-            if "中标结果公告" or "中标公告" in one_file_path:
-                for file_path in file_save_path:
-                    if ("pdf" or "docx" or "doc" in file_path) and ("中标" or "结果" or "公告" in file_path):
-                        text, image = self.get_file_content(file_path)
-                        self.save_announcement(content, image)
-                self.save_announcement(content, [])
+
+            if self.is_process_announcement(one_file_path):
+                text, image = self.get_file_content(file_save_path[0])
+                self.save_announcement(content, image)
+
+            elif self.is_process_pre_announcement(one_file_path):
+                text, image = self.get_file_content(file_save_path[0])
+                self.save_pre_announcement(content, image)
+
 
         with open(one_file_path + "/" + title + ".md", 'w', encoding='utf-8') as f:
             f.write(content)

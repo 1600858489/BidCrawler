@@ -27,8 +27,8 @@ PLATFORM_HASH = {
     "lssggzy.lishui.gov.cn": "丽水"
 }
 
-
-CSV_PATH = os.path.join(FILE_PATH, "中标结果.csv")
+ANNOUNCEMENT_PATH = os.path.join(FILE_PATH, "中标结果.csv")
+PRE_ANNOUNCEMENT_PATH = os.path.join(FILE_PATH, "预中标结果.csv")
 CONFIG_PATH = os.path.join(os.getcwd(), "config.json")
 
 DEBUG = True

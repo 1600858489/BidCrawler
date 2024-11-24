@@ -29,18 +29,19 @@ class OpenAIChatClient:
         # 初始化 OpenAI 客户端
         self.client = OpenAI(api_key=self.api_key,base_url=self.api_base)
 
-    def get_response(self, prompt, images=[], model="gpt-4o-mini", response_format="json", ) -> dict or None:
+    def get_response(self, prompt, images=None, model="gpt-4o", response_format="json", template=1) -> dict or None:
         """
           发送 prompt 给 OpenAI，并返回结果（JSON格式）
           """
         if images is None:
             images = []
+
         try:
             # 生成完成的响应
             completion = self.client.chat.completions.create(
                 model=model,
                 messages=[
-                    {"role": "system", "content": PROMPT_TEMPLATE},
+                    {"role": "system", "content": PROMPT_RENT if template == 1 else PROMPT_PREFORM},
                     {"role": "user", "content": [{"type": "text", "text": prompt}] + [
                         {"type": "image_url", "image_url": {"url": f"data:image/jpeg;base64,{image}"}} for image in
                         images]}
@@ -53,7 +54,7 @@ class OpenAIChatClient:
             # except Exception as e:
             #     pass
             response_content = completion.choices[0].message.content
-            log.info(f"AI 回复: {response_content}")
+            log.debug(f"AI 回复: {response_content}")
             try:
                 response_content = json.loads(response_content)
                 return response_content
@@ -77,48 +78,23 @@ class OpenAIChatClient:
 
 # 示例用法
 if __name__ == "__main__":
-    api_key = "sk-7Vl54xxxxxxxxxxxxxxx"  # 你的 API Key
-    client = OpenAIChatClient()
+    api_key = "sk-tAVPzckqsRVj6p7u726025D2Fc17476f82Be56C0517f5005"  # 你的 API Key
+    client = OpenAIChatClient(
+        api_key=api_key,
+        api_base="https://api.xty.app/v1"
+    )
 
     prompt = """
-金汤小米烩三宝
-菜品介绍
-金汤小米烩三宝是一道宴请上等贵宾的客家菜。此菜品以南瓜翅汤为基底，小米为主料，搭配三种风味独特的鲜美食材，如海参，鱼肚，鱼翅。金黄色的南瓜翅汤和小米相得益彰，色泽金黄，口感浓郁。此菜不仅容易消化，还富含多种维生素和矿物质
-
-原料
-小米：
-南瓜茸：
-海参：
-鱼肚：
-翅汤；
-鱼翅；
-青豆：
-姜葱
-盐：适量
-白胡椒粉：适量
-鸡精：适量
-淀粉：适量
- 黄酒
-清水：适量
-
-做法
-
-1. 小米淘洗干净，用清水浸泡30分钟备用。
-2. 南瓜去皮去籽，切成小块，蒸熟制成茸。
-3. 海参，鱼肚切块
-
-1. 在锅中加入适量清水，加姜葱料酒，放入海参鱼肚，大火煮沸后倒出沥干水份。
-
-2.取锅加入翅汤，南瓜茸调色，
-加入盐、白胡椒粉和鸡精调味，加入海参鱼肚，鱼翅，青豆，煮至入味勾芡即可关火出锅装盘即可。
-
-营养功效
-金汤小米烩三宝富含蛋白质、膳食纤维、维生素A、维生素C以及多种矿物质，具有开胃健脾、养胃护胃的功效。
-
-进程已结束，退出代码为 0
+    检查文件
         """
-    response = client.get_response(prompt)
+    from core.file_read.pdf import *
 
-    if response:
-        print("AI 回复:", response)
-        print(type(response))
+    images = read_pdf(r"E:\电纸书\杭州港萧山港区临浦作业区（一期）项目施工监理中标前公示.pdf",
+                      poppler_path=r'F:\python_projcet\BidCrawler\poppler\Library\bin')
+
+    for i in range(10):
+        response = client.get_response(prompt, images=images, template=2)
+
+        if response:
+            # print("AI 回复:", response)
+            print(type(response))

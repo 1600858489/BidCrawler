@@ -1,14 +1,12 @@
 import os
-from urllib.parse import urlparse, parse_qs
+from urllib.parse import urlparse
 
-from bs4 import BeautifulSoup
 from html2text import html2text
 from win32ctypes.pywin32.pywintypes import datetime
 
 from core.history_manager import HistoryManager
 from log.logger import Logger
 from .qz import QzParser
-
 
 history_manager = HistoryManager()
 log = Logger().get_logger()
@@ -100,9 +98,12 @@ class TaizhouParser(QzParser):
         level4_path =  self.html_content.select_one("span#viewGuid").text.strip()
         return f"/{level3_path}/{level4_path}"
 
+    def get_title(self):
+        title = self.html_content.select_one("p.main-title").text.strip()
+        return title
 
     def parse_detail_page(self):
-
+        # TODO: 同步功能，删除改函数
         title = self.html_content.select_one("p.main-title").text.strip()
         content = self.get_content()
         file_info = self.get_file_info()
@@ -115,7 +116,7 @@ class TaizhouParser(QzParser):
         while file_info:
             try:
                 file = file_info.pop(0)
-                file_url = file['href']
+                file_url, file_name = file['href']
                 file_name = file['file_name']
                 num = 0
                 while os.path.exists(one_file_path + "/" + file_name):

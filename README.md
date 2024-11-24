@@ -98,9 +98,7 @@ pyinstaller --onefile --windowed --distpath "./BIdCrawler" --workpath "./BIdCraw
 
 MIT License
 
-
-
-# 待优化项
+## 待优化项
 
  -[x] 保存结果域名映射中文
  -[ ] 中标公告包含评审专家以及定标结果公示中的单位（杭州）

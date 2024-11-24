@@ -1,20 +1,14 @@
 import datetime
-import os
 import random
 import time
 import traceback
-from urllib.parse import urlparse, parse_qs
 
-from Tools.scripts.linktree import linknames
-from bs4 import BeautifulSoup
 from html2text import html2text
 
+from config import *
 from core.history_manager import HistoryManager
 from log.logger import Logger
-from .manager import AbstractWebCrawler
 from .qz import QzParser
-
-from config import *
 
 log = Logger().get_logger()
 
@@ -222,6 +216,14 @@ class HangzhouParser(QzParser):
         level4_path =  a_tags[-1].text.strip()
         return f"/{level3_path}/{level4_path}"
 
+    def get_title(self):
+        """
+        获取标题
+        :return:
+        """
+        title = self.html_content.find("div", {"class": "AfficheTitle"}).text.strip()
+        return title
+
     def parse_detail_page(self):
         """
         解析详情页
@@ -230,7 +232,8 @@ class HangzhouParser(QzParser):
 
         # print("AfficheTitle" in self.html_content.string)
         # print(self.html_content)
-        title = "-".join([i.strip() for i in self.html_content.find("div", {"class": "AfficheTitle"}).text.strip().split('\n') ])
+        # TODO 解耦功能，删除函数
+        title = self.get_title()
 
         content = self.get_content()
         file_info = self.get_file_info()

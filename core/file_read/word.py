@@ -2,7 +2,7 @@ from docx import Document
 from win32com import client as wc
 
 
-def read_and_convert_doc(file_path):
+def read_and_convert_doc(file_path) -> str:
     try:
         # 检查文件扩展名，若是.doc文件，则先转换为.docx格式
         if file_path.endswith('.doc'):
