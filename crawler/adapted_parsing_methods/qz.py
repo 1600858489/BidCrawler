@@ -167,7 +167,7 @@ class QzParser(AbstractWebCrawler):
 
         return html2text.html2text(str(content_div))
 
-    def save_announcement(self, content: str, images: list, template=None) -> bool:
+    def save_announcement(self,domain: str, content: str, images: list, template=None) -> bool:
         if not self.large_model:
             return False
         log.info(f"save announcement: {len(content)}")
@@ -179,8 +179,9 @@ class QzParser(AbstractWebCrawler):
         if not json_data:
             log.error("OpenAI Chat Client 调用失败")
             return False
-        columns = ['标段（包）编号', '标段（包）名称', '中标单位', '项目经理', '中标价格', '工期（天）', '其他信息']
+        columns = ['域','标段（包）编号', '标段（包）名称', '中标单位', '项目经理', '中标价格', '工期（天）', '其他信息']
         df = pd.DataFrame([[
+            domain,
             json_data.get("section_id"),
             json_data.get("section_name"),
             json_data.get("winning_company"),
@@ -196,7 +197,7 @@ class QzParser(AbstractWebCrawler):
             df.to_csv(ANNOUNCEMENT_PATH, mode='a', header=False, index=False)
         return True
 
-    def save_pre_announcement(self, content: str, images: list, template=None) -> bool:
+    def save_pre_announcement(self, domain: str,content: str, images: list, template=None) -> bool:
         if not self.large_model:
             return False
         log.info(f"save pre announcement")
@@ -210,11 +211,12 @@ class QzParser(AbstractWebCrawler):
             log.error("OpenAI Chat Client 调用失败")
 
             return False
-        columns = ['标段（包）编号', '标段（包）名称', '预中标单位', '项目经理', '预中标价格', '工期（天）', '评分']
+        columns = ['域','标段（包）编号', '标段（包）名称', '预中标单位', '项目经理', '预中标价格', '工期（天）', '评分']
 
         rows = []
         for i in range(len(json_data.get("pre_winning_company"))):
             row = {
+                "域": domain,
                 "标段（包）编号": json_data.get("section_id"),
                 "标段（包）名称": json_data.get("section_name"),
                 "预中标单位": json_data.get("pre_winning_company")[i],
@@ -322,11 +324,11 @@ class QzParser(AbstractWebCrawler):
 
             if self.is_process_announcement(one_file_path):
                 text, image = self.get_file_content(file_save_path[0])
-                self.save_announcement(content, image)
+                self.save_announcement(PLATFORM_HASH.get(self.domain, self.domain),content, image)
 
             elif self.is_process_pre_announcement(one_file_path):
                 text, image = self.get_file_content(file_save_path[0])
-                self.save_pre_announcement(content, image)
+                self.save_pre_announcement(PLATFORM_HASH.get(self.domain, self.domain),content, image)
 
 
         self.save_content2md(content, one_file_path, title)
