@@ -16,12 +16,9 @@ class OpenAIChatClient:
         """
           初始化 OpenAI API 客户端，可以通过环境变量或者传入 api_key
           """
-
-        # self.api_key = api_key or "sk-GZmletEW0sn8Kp7tA33f9a00C4Fd4a3a9848C12080C74c9d"
-        # self.api_base = api_base or "https://oneapi.sotawork.com/v1"
         if not api_key:
-
             raise ValueError("请设置环境变量 OPENAI_API_KEY 或传入 api_key 参数")
+
         self.api_key = api_key
         if api_base:
             self.api_base = api_base
@@ -49,10 +46,7 @@ class OpenAIChatClient:
                 stream=False,
                 response_format={"type": "json_object"}
             )
-            # 获取回答内容
-            #     print(completion.choices[0].message.content)
-            # except Exception as e:
-            #     pass
+
             response_content = completion.choices[0].message.content
             log.debug(f"AI 回复: {response_content}")
             try:
@@ -66,14 +60,6 @@ class OpenAIChatClient:
             print(f"请求出错: {e}")
             log.error(f"请求出错: {e}")
             return None
-
-    def upload_image(self, image_path):
-        """
-        上传图片并返回识别结果
-        """
-        with open(image_path, "rb") as f:
-            response = self.client.upload(f)
-            return response.get("image_url")
 
 
 # 示例用法
@@ -93,7 +79,7 @@ if __name__ == "__main__":
                       poppler_path=r'F:\python_projcet\BidCrawler\poppler\Library\bin')
 
     for i in range(10):
-        response = client.get_response(prompt, images=images, template=2)
+        response = client.get_response(prompt, images=images, template=1)
 
         if response:
             # print("AI 回复:", response)

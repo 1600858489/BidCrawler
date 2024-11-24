@@ -104,7 +104,9 @@ class QzParser(AbstractWebCrawler):
         script_tag = self.html_content.find('script', type='text/xml')
         if not script_tag:
             log.error("没有找到合适的 script 标签")
-            return None
+            self.response_type = "error"
+            self.error_msg = "没有找到合适的详情信息"
+            return
 
         xml_content = script_tag.string
 
@@ -113,6 +115,8 @@ class QzParser(AbstractWebCrawler):
             xml_soup = BeautifulSoup(xml_content, 'xml')
         except Exception as e:
             log.error(f"解析 XML 内容失败：{e}")
+            self.response_type = "error"
+            self.error_msg = f"解析内容失败，错误信息：{e}"
             return None
 
         # 提取 <record> 数据
@@ -204,17 +208,23 @@ class QzParser(AbstractWebCrawler):
                                                                                                 template)
         if not json_data:
             log.error("OpenAI Chat Client 调用失败")
+
             return False
         columns = ['标段（包）编号', '标段（包）名称', '预中标单位', '项目经理', '预中标价格', '工期（天）', '评分']
-        df = pd.DataFrame([[
-            json_data.get("section_id"),
-            json_data.get("section_name"),
-            json_data.get("pre_winning_company"),
-            json_data.get("project_manager"),
-            json_data.get("pre_winning_price"),
-            json_data.get("duration_days"),
-            json_data.get("score")
-        ]], columns=columns)
+
+        rows = []
+        for i in range(len(json_data.get("pre_winning_company"))):
+            row = {
+                "标段（包）编号": json_data.get("section_id"),
+                "标段（包）名称": json_data.get("section_name"),
+                "预中标单位": json_data.get("pre_winning_company")[i],
+                "项目经理": json_data.get("project_manager")[i],
+                "预中标价格": json_data.get("pre_winning_price")[i],
+                "工期（天）": json_data.get("duration_days")[i],
+                "评分": json_data.get("score")[i]
+            }
+            rows.append(row)
+        df = pd.DataFrame(rows, columns=columns)
         log.info(f"save pre announcement to csv: {PRE_ANNOUNCEMENT_PATH}")
         if not os.path.exists(PRE_ANNOUNCEMENT_PATH):
             df.to_csv(PRE_ANNOUNCEMENT_PATH, mode='w', header=True, index=False)
@@ -255,17 +265,14 @@ class QzParser(AbstractWebCrawler):
         return file_url, file_name
 
 
+    def save_content2md(self, content: str, file_path: str, title: str):
+        with open(file_path + "/" + title + ".md", 'w', encoding='utf-8') as f:
+            f.write(f"# {title}\n\n")
+            f.write("=" * len(title) + "\n\n")
+            f.write(content)
+        return True
 
-    def parse_detail_page(self):
-
-        title = self.get_title()
-        content = self.get_content()
-        file_info = self.get_file_info()
-        is_file = True if file_info else False
-        one_file_path = self.file_path + "/" + PLATFORM_HASH.get(self.domain, self.domain) + self.set_file_path() + "/" + title
-        print(one_file_path,self.domain)
-        if not os.path.exists(one_file_path):
-            os.makedirs(one_file_path)
+    def download_file(self, file_info, one_file_path,file_url):
 
         file_save_path = []
         while file_info:
@@ -277,10 +284,41 @@ class QzParser(AbstractWebCrawler):
                 num += 1
             file_path = one_file_path + "/" + file_name
             log.info(f"downloading file: {file_name}")
+            log.info(f"downloading file: {file_url}")
             if self.file_download(file_url, file_path):
                 file_save_path.append(file_path)
                 continue
-        if self.large_model or True:
+
+    def set_one_file_path(self,title):
+        return self.file_path + "/" + PLATFORM_HASH.get(self.domain, self.domain) + self.set_file_path() + "/" + title
+
+
+    def save_history(self,is_file,one_file_path):
+        history_manager.add_to_history(
+            url=self.url,
+            has_attachment=is_file,
+            attachment_path=one_file_path,
+            platform=self.domain,
+            timestamp=str(datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")),
+            description="test"
+        )
+
+
+    def parse_detail_page(self):
+
+        title = self.get_title()
+        content = self.get_content()
+        file_info = self.get_file_info()
+        is_file = True if file_info else False
+        one_file_path = self.set_one_file_path(title)
+
+
+        if not os.path.exists(one_file_path):
+            os.makedirs(one_file_path)
+
+        file_save_path = self.download_file(file_info, one_file_path) if is_file else []
+
+        if self.large_model and file_save_path:
 
             if self.is_process_announcement(one_file_path):
                 text, image = self.get_file_content(file_save_path[0])
@@ -291,19 +329,12 @@ class QzParser(AbstractWebCrawler):
                 self.save_pre_announcement(content, image)
 
 
-        with open(one_file_path + "/" + title + ".md", 'w', encoding='utf-8') as f:
-            f.write(content)
+        self.save_content2md(content, one_file_path, title)
         self.response_type = "text"
         self.response = one_file_path
+        self.save_history(is_file,one_file_path)
 
-        history_manager.add_to_history(
-            url=self.url,
-            has_attachment=is_file,
-            attachment_path=one_file_path,
-            platform=self.domain,
-            timestamp=str(datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")),
-            description="test"
-        )
+
 
 
     def parse(self):

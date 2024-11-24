@@ -15,7 +15,7 @@ log = Logger().get_logger()
 class TaizhouParser(QzParser):
     """
     This class inherits from QzParser and implements the specific parsing methods for taizhou.com.
-    url: https://ggzy.tzztb.zjtz.gov.cn/https://ggzy.tzztb.zjtz.gov.cn/
+    url: https://ggzy.tzztb.zjtz.gov.cn/
     """
 
     MAIN_TABLE_PAGE_URL = "https://ggzy.tzztb.zjtz.gov.cn/jyxx/002001/trade_infor.html"
@@ -102,51 +102,17 @@ class TaizhouParser(QzParser):
         title = self.html_content.select_one("p.main-title").text.strip()
         return title
 
-    def parse_detail_page(self):
-        # TODO: 同步功能，删除改函数
-        title = self.html_content.select_one("p.main-title").text.strip()
-        content = self.get_content()
-        file_info = self.get_file_info()
-        is_file = True if file_info else False
-        one_file_path = self.file_path + "/" + self.domain  + self.set_file_path() + "/" + title
-        if not os.path.exists(one_file_path):
-            os.makedirs(one_file_path)
+    def get_file_description(self, file_info):
+        file_url = file_info['href']
+        file_name = file_info['file_name']
+        return file_url, file_name
 
-        file_save_path = []
-        while file_info:
-            try:
-                file = file_info.pop(0)
-                file_url, file_name = file['href']
-                file_name = file['file_name']
-                num = 0
-                while os.path.exists(one_file_path + "/" + file_name):
-                    file_name = file_name.split('.')[0] + f"({num})" + "." + file_name.split('.')[1]
-                    num += 1
-                file_path = one_file_path + "/" + file_name
-                log.info(f"downloading file: {file_name}")
-                if self.file_download(file_url, file_path):
-                    file_save_path.append(file_path)
-                    continue
-            except Exception as e:
-                log.error(f"download file error: {e}")
-                continue
 
-        if "中标结果公告" in one_file_path:
-            for file_path in file_save_path:
-                if ("pdf" or "docx" or "doc" in file_path) and ("中标" or "结果" or "公告" in file_path):
-                    text, image = self.get_file_content(file_path)
-                    self.save_announcement(content, image)
+    def is_process_announcement(self, content: str) -> bool:
+        keyword = ["中标结果公告", "中标公告"]
 
-        with open(one_file_path + "/" + title + ".md", 'w', encoding='utf-8') as f:
-            f.write(content)
-        self.response_type = "text"
-        self.response = one_file_path
+        return any(key in content for key in keyword)
 
-        history_manager.add_to_history(
-            url=self.url,
-            has_attachment=is_file,
-            attachment_path=one_file_path,
-            platform=self.domain,
-            timestamp=str(datetime.now().strftime("%Y-%m-%d %H:%M:%S")),
-            description="test"
-        )
+    def is_process_pre_announcement(self, content: str) -> bool:
+        keyword = ["中标候选人公示"]
+        return any(key in content for key in keyword)

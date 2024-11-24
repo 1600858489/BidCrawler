@@ -224,54 +224,18 @@ class HangzhouParser(QzParser):
         title = self.html_content.find("div", {"class": "AfficheTitle"}).text.strip()
         return title
 
-    def parse_detail_page(self):
-        """
-        解析详情页
-        :return:
-        """
 
-        # print("AfficheTitle" in self.html_content.string)
-        # print(self.html_content)
-        # TODO 解耦功能，删除函数
-        title = self.get_title()
+    def is_process_announcement(self, content: str) -> bool:
+        keyword = ["中标结果公告", "中标公告"]
 
-        content = self.get_content()
-        file_info = self.get_file_info()
-        is_file =  True if file_info else False
-        print(self.domain,PLATFORM_HASH.get(self.domain, self.domain))
-        one_file_path = self.file_path + "/" + PLATFORM_HASH.get(self.domain, self.domain)  + self.set_file_path() + "/" + title
-        if not os.path.exists(one_file_path):
-            os.makedirs(one_file_path)
+        return any(key in content for key in keyword)
 
-        while file_info:
-            try:
-                file = file_info.pop(0)
-                file_name = file["name"]
-                file_url = file["url"]
-                num = 0
-                while os.path.exists(one_file_path + "/" + file_name):
-                    num += 1
-                    file_name = file_name.split(".")[0] + f"({num})." + file_name.split(".")[1]
-                file_path = one_file_path + "/" + file_name
-                if self.file_download(file_url, file_path):
-                    continue
-            except Exception as e:
-                log.error(f"Download file error: {e}")
-                continue
+    def is_process_pre_announcement(self, content: str) -> bool:
+        keyword = ["中标前公告"]
+        return any(key in content for key in keyword)
 
-        with open(one_file_path + "/" + title + ".md", "w", encoding="utf-8") as f:
-            f.write(title + "\n")
-            f.write("=" * len(title) + "\n\n")
-            f.write(content)
+    def get_file_description(self, file_info):
+        file_url = file_info["url"]
+        file_name = file_info["name"]
 
-        self.response_type = "text"
-        self.response = one_file_path
-
-        history_manager.add_to_history(
-            url=self.url,
-            has_attachment=is_file,
-            attachment_path=one_file_path,
-            platform=self.domain,
-            timestamp=str(datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")),
-            description="test"
-        )
+        return file_url, file_name

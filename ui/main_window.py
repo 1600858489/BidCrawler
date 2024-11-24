@@ -91,19 +91,6 @@ class CrawlerThread(QThread):
                 if resulta is None:
                     break
                 parsed_type, parsed_data = resulta
-                # if not parsed_data or parsed_type == "error":
-                #     # self.update_completed.emit(f"成功: {link}，但没有找到有效数据。尚未记录入历史记录")
-                #     if parsed_type == "error":
-                #         print(parsed_data)
-                #         self.update_failed.emit(parsed_data)
-                #         log.info(parsed_data)
-                #
-                #     if parsed_type != "url_list":
-                #         self.update_failed.emit(f"{link}  查询出现异常，请查看日志。 该条记录尚未记录入历史记录。")
-                #         log.info(f"session {link} has no valid data")
-                #     else:
-                #         self.update_completed.emit(f"成功: {link}，但没有找到有效链接。 请检查条件范围内是否有可寻找数据，以及历史记录是否存在")
-
                 if parsed_type == "error":
                     log.error(parsed_data)
                     self.update_failed.emit(parsed_data)
