@@ -238,15 +238,20 @@ class QzParser(AbstractWebCrawler):
     def get_file_info(self):
         return self.html_content.select('#fileDownd a')
 
-    def get_file_content(self, file_path):
-        text = ""
+    def get_file_content(self, file_paths):
+        texts = ""
         base_images = []
-        if "pdf" in file_path:
-            text, base_images = read_pdf(file_path)
-        elif "docx" or "doc" in file_path:
-            text = read_and_convert_doc(file_path)
+        for file_path in file_paths:
 
-        return text, base_images
+            if "pdf" in file_path:
+                text, base_image = read_pdf(file_path)
+                if len(base_image) > 0: base_images.append(base_image)
+                if len(text) > len(texts): texts = text
+            elif "docx" or "doc" in file_path:
+                text = read_and_convert_doc(file_path)
+                if len(text) > len(texts): texts = text
+
+        return texts, base_images
 
     def get_title(self):
         return self.html_content.find('title').text.strip().replace("/", "")
@@ -274,7 +279,7 @@ class QzParser(AbstractWebCrawler):
             f.write(content)
         return True
 
-    def download_file(self, file_info, one_file_path,file_url):
+    def download_file(self, file_info, one_file_path):
 
         file_save_path = []
         while file_info:
@@ -290,6 +295,7 @@ class QzParser(AbstractWebCrawler):
             if self.file_download(file_url, file_path):
                 file_save_path.append(file_path)
                 continue
+        return file_save_path
 
     def set_one_file_path(self,title):
         return self.file_path + "/" + PLATFORM_HASH.get(self.domain, self.domain) + self.set_file_path() + "/" + title
@@ -318,16 +324,20 @@ class QzParser(AbstractWebCrawler):
         if not os.path.exists(one_file_path):
             os.makedirs(one_file_path)
 
-        file_save_path = self.download_file(file_info, one_file_path) if is_file else []
+        file_save_path = self.download_file(file_info, one_file_path)
+
+
 
         if self.large_model and file_save_path:
 
             if self.is_process_announcement(one_file_path):
-                text, image = self.get_file_content(file_save_path[0])
+                text, image = self.get_file_content(file_save_path)
+                if len(image) > 200:
+                    i
                 self.save_announcement(PLATFORM_HASH.get(self.domain, self.domain),content, image)
 
             elif self.is_process_pre_announcement(one_file_path):
-                text, image = self.get_file_content(file_save_path[0])
+                text, image = self.get_file_content(file_save_path)
                 self.save_pre_announcement(PLATFORM_HASH.get(self.domain, self.domain),content, image)
 
 

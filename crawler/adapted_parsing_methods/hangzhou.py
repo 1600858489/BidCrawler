@@ -79,9 +79,9 @@ class HangzhouParser(QzParser):
     }
     """
 
-    def __init__(self, url, headers=None, params=None, proxies=None, data=None, method="GET", max_page=None,
-                 keyword=None, max_day=None):
-        super().__init__(url, headers, params, proxies, data, method, max_page, keyword, max_day)
+    # def __init__(self, url, headers=None, params=None, proxies=None, data=None, method="GET", max_page=None,
+    #              keyword=None, max_day=None,):
+    #     super().__init__(url, headers, params, proxies, data, method, max_page, keyword, max_day)
 
     def parse_html(self):
         """
@@ -152,6 +152,10 @@ class HangzhouParser(QzParser):
         获取文件信息
         :return:
         """
+        # def set_file_url_name(filepath, showName):
+        #     file_url = f"https://ggzy.hzctc.hangzhou.gov.cn/Uservice/DownLoadFile.aspx?dirtype=3&filepath={filepath}&showName={showName}"
+        #     file_name = showName + "." + filepath.split(".")[-1]
+        #     return file_url, file_name
         files_info = []
         links_info = self.html_content.find_all("a")
         while links_info:
@@ -170,16 +174,18 @@ class HangzhouParser(QzParser):
                     file_hz = ""
                 try:
                     file_url = self.get_download_file_url(file_info[0],file_info[1])
+                    print(file_url)
+                    files_info.append(
+                        {
+                            "name": file_info[0] + "." + file_hz,
+                            "url": file_url,
+                        }
+                    )
                 except Exception as e:
                     log.error(f"file_info is {file_info},file tag is {link}")
                     log.error(f"Get file url error: {e}, {traceback.format_exc()}")
 
-                files_info.append(
-                    {
-                        "name": file_info[0] + "." + file_hz,
-                        "url": self.get_download_file_url(file_info[0],file_info[1]),
-                    }
-                )
+
         return files_info
 
     def get_download_file_url(self,file_name,file_id):
@@ -197,6 +203,7 @@ class HangzhouParser(QzParser):
             return ""
         if file_url.status_code == 200:
             file_url = file_url.text.strip()
+            file_url = file_url.replace("+", "")
             return file_url
         log.error(f"Get file url error: {file_url.status_code}, {file_url.text}")
         return None
@@ -222,6 +229,8 @@ class HangzhouParser(QzParser):
         :return:
         """
         title = self.html_content.find("div", {"class": "AfficheTitle"}).text.strip()
+        title = title.replace('\r\n', '')  # 去掉换行符
+        title = ' '.join(title.split())  # 去掉多余的空格
         return title
 
 
@@ -231,11 +240,12 @@ class HangzhouParser(QzParser):
         return any(key in content for key in keyword)
 
     def is_process_pre_announcement(self, content: str) -> bool:
-        keyword = ["中标前公告"]
+        keyword = ["中标前公示"]
         return any(key in content for key in keyword)
 
     def get_file_description(self, file_info):
         file_url = file_info["url"]
-        file_name = file_info["name"]
+        file_name = file_info["name"].strip()
 
         return file_url, file_name
+

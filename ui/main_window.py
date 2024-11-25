@@ -333,7 +333,7 @@ class WebCrawlerApp(QWidget):
                 QMessageBox.warning(self, "警告", "启用大模型时，请填写 API Key ")
                 return
 
-        print(large_model)
+        print()
 
         self.config['api_key'] = api_key
         self.config['api_base'] = api_base

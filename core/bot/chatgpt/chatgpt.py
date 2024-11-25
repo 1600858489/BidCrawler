@@ -64,10 +64,10 @@ class OpenAIChatClient:
 
 # 示例用法
 if __name__ == "__main__":
-    api_key = "sk-tAVPzckqsRVj6p7u726025D2Fc17476f82Be56C0517f5005"  # 你的 API Key
+    api_key = ""  # 你的 API Key
     client = OpenAIChatClient(
         api_key=api_key,
-        api_base="https://api.xty.app/v1"
+        api_base=""
     )
 
     prompt = """
@@ -75,11 +75,11 @@ if __name__ == "__main__":
         """
     from core.file_read.pdf import *
 
-    images = read_pdf(r"E:\电纸书\杭州港萧山港区临浦作业区（一期）项目施工监理中标前公示.pdf",
+    text, images = read_pdf(r"E:\电纸书\杭州港萧山港区临浦作业区（一期）项目施工监理中标前公示.pdf",
                       poppler_path=r'F:\python_projcet\BidCrawler\poppler\Library\bin')
 
     for i in range(10):
-        response = client.get_response(prompt, images=images, template=1)
+        response = client.get_response(text, template=2, images=[])
 
         if response:
             # print("AI 回复:", response)

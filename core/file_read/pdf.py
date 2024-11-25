@@ -10,8 +10,11 @@ from log.logger import Logger
 log = Logger().get_logger()
 
 
-def get_base64() -> str:
-    pass
+def get_base64(img) -> str:
+    buffered = BytesIO()
+    img.save(buffered, format="PNG")
+    img_base64 = base64.b64encode(buffered.getvalue()).decode('utf-8')
+    return img_base64
 
 
 def read_pdf(pdf_path, poppler_path=None) -> tuple[str, list[str]]:
@@ -29,16 +32,15 @@ def read_pdf(pdf_path, poppler_path=None) -> tuple[str, list[str]]:
         for page in pdf.pages:
             text_content += page.extract_text() + "\n"
 
+    # print(text_content)
     # 将 PDF 页面转换为图像
     images = convert_from_path(pdf_path, poppler_path=poppler_path)
 
     # 遍历每一页图像并进行 Base64 编码
-    for img in images:
-        buffered = BytesIO()
-        img.save(buffered, format="PNG")
-        img_base64 = base64.b64encode(buffered.getvalue()).decode('utf-8')
-        base64_images.append(img_base64)
-    log.info(f"PDF 页面转换为图像成功，共 {len(images)} 页")
+    if text_content == "" or len(text_content) <= 50:
+        for img in images:
+            base64_images.append(get_base64(img))
+        log.info(f"PDF 页面转换为图像成功，共 {len(images)} 页")
     return text_content, base64_images
 
 
