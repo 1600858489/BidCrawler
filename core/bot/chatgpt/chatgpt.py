@@ -60,7 +60,7 @@ class OpenAIChatClient:
         print("OpenAI 客户端初始化成功")
 
 
-    def get_response(self, prompt, images=None, model="gpt-4o-mini", response_format="json", template=1,
+    def get_response(self, prompt, images=None, model="gpt-4o", response_format="json", template=1,
                      max_retries=3) -> dict or None:
         if images is None:
             images = []

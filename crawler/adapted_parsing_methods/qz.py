@@ -183,7 +183,7 @@ class QzParser(AbstractWebCrawler):
     # def get_announcement_info(self, content: str) -> dict:
 
 
-    def save_announcement(self,domain: str, content: str, images: list, template=None) -> bool:
+    def save_announcement(self,domain: str, content: str, images: list, template=1) -> bool:
         if not self.large_model:
             return False
         log.info(f"save announcement: {len(content)}")
@@ -213,7 +213,7 @@ class QzParser(AbstractWebCrawler):
             df.to_csv(ANNOUNCEMENT_PATH, mode='a', header=False, index=False)
         return True
 
-    def save_pre_announcement(self, domain: str,content: str, images: list, template=None) -> bool:
+    def save_pre_announcement(self, domain: str,content: str, images: list, template=2) -> bool:
         if not self.large_model:
             return False
         log.info(f"save pre announcement")
@@ -276,7 +276,7 @@ class QzParser(AbstractWebCrawler):
         return self.html_content.find('title').text.strip().replace("/", "")
 
     def is_process_announcement(self, content: str) -> bool:
-        keyword = ["中标结果公告", "中标公告","开标"]
+        keyword = ["中标结果公告", "中标公告"]
         if any(key in content for key in keyword):
             return True
 
