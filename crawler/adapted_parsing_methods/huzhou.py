@@ -81,7 +81,9 @@ class HuzhouParser(QzParser):
         content = html2text(str(content))
         return content
 
-
+    def is_process_pre_announcement(self, content: str) -> bool:
+        keywords = ["中标候选人公示","评标结果公示"]
+        return any(keyword in content for keyword in keywords)
 
     def set_file_path(self):
         target_div = self.html_content.find("div", {"class": "crumbs", "id": "crumbs"})

@@ -160,12 +160,28 @@ class QzParser(AbstractWebCrawler):
         level4_path =  self.html_content.select_one("span#col1_name").text.strip()
         return f"/{level3_path}/{level4_path}"
 
+
     def get_content(self):
         content_div = self.html_content.select_one('div.ewb-detail-content.ewb-mt20 > div')
+
         if not content_div:
             content_div = "no text data"
 
+
         return html2text.html2text(str(content_div))
+
+    # # 没有找到合适的详情信息时尝试获取里面的图片
+    # def get_image_content(self):
+    #     congtent_div = self.html_content.select_one('div.ewb-detail-content.ewb-mt20 > div')
+    #     if not congtent_div:
+    #         return []
+    #     img_tags = congtent_div.select('img')
+    #     img_urls = []
+    #     for img_tag in img_tags:
+
+
+    # def get_announcement_info(self, content: str) -> dict:
+
 
     def save_announcement(self,domain: str, content: str, images: list, template=None) -> bool:
         if not self.large_model:
@@ -175,7 +191,7 @@ class QzParser(AbstractWebCrawler):
             content += "\n\n" + "## 请借助该文本与图片提取出我需要的信息"
 
         json_data = OpenAIChatClient(api_key=self.api_key, api_base=self.api_base).get_response(content, images,
-                                                                                                template)
+                                                                                                template=template)
         if not json_data:
             log.error("OpenAI Chat Client 调用失败")
             return False
@@ -205,8 +221,11 @@ class QzParser(AbstractWebCrawler):
         if images:
             content += "\n\n" + "## 请借助该文本与图片提取出我需要的信息"
 
-        json_data = OpenAIChatClient(api_key=self.api_key, api_base=self.api_base).get_response(content, images,
-                                                                                                template)
+
+        # json_data = OpenAIChatClient(api_key=self.api_key, api_base=self.api_base).get_response(content, images,template)
+        client = OpenAIChatClient(api_key=self.api_key, api_base=self.api_base)
+        json_data = client.get_response(content, images, template=template)
+
         if not json_data:
             log.error("OpenAI Chat Client 调用失败")
 
@@ -257,12 +276,14 @@ class QzParser(AbstractWebCrawler):
         return self.html_content.find('title').text.strip().replace("/", "")
 
     def is_process_announcement(self, content: str) -> bool:
-        keyword = ["中标结果公告", "中标公告"]
+        keyword = ["中标结果公告", "中标公告","开标"]
+        if any(key in content for key in keyword):
+            return True
 
         return any(key in content for key in keyword)
 
     def is_process_pre_announcement(self, content: str) -> bool:
-        keyword = ["预中标公告"]
+        keyword = ["预中标公告","中标候选人公示","开标"]
         return any(key in content for key in keyword)
 
     def get_file_description(self, file_info):
@@ -325,15 +346,16 @@ class QzParser(AbstractWebCrawler):
             os.makedirs(one_file_path)
 
         file_save_path = self.download_file(file_info, one_file_path)
+        print(file_save_path,self.large_model)
+
 
 
 
         if self.large_model and file_save_path:
-
+            # 处理公告
+            print(one_file_path)
             if self.is_process_announcement(one_file_path):
                 text, image = self.get_file_content(file_save_path)
-                if len(image) > 200:
-                    i
                 self.save_announcement(PLATFORM_HASH.get(self.domain, self.domain),content, image)
 
             elif self.is_process_pre_announcement(one_file_path):

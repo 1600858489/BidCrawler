@@ -28,6 +28,10 @@ class JiaxingParser(QzParser):
         self.response = res
 
 
+    def is_process_pre_announcement(self, content: str) -> bool:
+        keyword = ["中标候选人公示"]
+        return any(key in content for key in keyword)
+
 
     def get_file_info(self):
         file_info = self.html_content.find_all('a',href=True)

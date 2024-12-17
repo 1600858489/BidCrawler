@@ -64,6 +64,17 @@ class ZhoushanParser(QzParser):
         md = html2text(str(context))
         return md
 
+
+    def is_process_pre_announcement(self, content: str) -> bool:
+        keyword = ["中标候选人（预审）公示"]
+        return any(key in content for key in keyword)
+
+    def is_process_announcement(self, content: str) -> bool:
+        keyword = ["结果公告"]
+
+        return any(key in content for key in keyword)
+
+
     def get_file_info(self):
         file_info = []
         file_links = self.html_content.select("a")

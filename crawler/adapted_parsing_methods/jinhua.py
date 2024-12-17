@@ -40,6 +40,9 @@ class JinhuaParser(QzParser):
         ground_table_urls = get_ground_table_url(self.url, self.html_content)
         self.response_type = 'url_list'
         self.response = ground_table_urls
+    def is_process_pre_announcement(self, content: str) -> bool:
+        keyword = ["中标候选人公示"]
+        return any(key in content for key in keyword)
 
     def get_content(self):
         content_div = self.html_content.select_one('div.content')
